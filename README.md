@@ -11,6 +11,10 @@ python start.py
 
 页面地址为 `http://127.0.0.1:7860/`。
 
+## GitHub Pages
+
+`static/index.html` 是不依赖后端的手动测试版本，归因计算和指纹库读取都在浏览器本地完成。仓库附带的 GitHub Actions 会将 `static/` 部署到 GitHub Pages。
+
 ## 使用
 
 - **手动测试**：复制三条挑战，分别发送给同一个待测模型，再粘贴每次完整输出。
@@ -56,7 +60,7 @@ templates/          页面模板
 
 ## 指纹库说明
 
-项目中现有指纹库共包含两个模型家族、12 个模型：
+项目中现有指纹库共包含两个模型家族、13 个模型：
 
 ```
 gpt-5.4
@@ -64,6 +68,7 @@ gpt-5.5
 gpt-5.6-luna
 gpt-5.6-terra
 gpt-5.6-sol
+gpt-6-astra
 claude-haiku-4-5-20251001
 claude-sonnet-4-6
 claude-sonnet-5
