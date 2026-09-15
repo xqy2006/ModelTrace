@@ -4,6 +4,7 @@ import json
 import math
 import re
 import secrets
+from functools import wraps
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -155,6 +156,23 @@ def replace_bank(bank_id: str) -> None:
     rebuild_global_bank()
 
 
+def require_local_admin(view):
+    """Restrict bank management endpoints to same-machine requests.
+
+    These endpoints expose and mutate the fingerprint bank catalog and are
+    not meant to be reachable by arbitrary network clients; the app itself
+    is only documented to be served on 127.0.0.1.
+    """
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if request.remote_addr not in ("127.0.0.1", "::1"):
+            return jsonify({"error": "forbidden"}), 403
+        return view(*args, **kwargs)
+
+    return wrapper
+
+
 @app.get("/")
 def index():
     summaries = {bank_id: summarized_bank(bank_id) for bank_id in BANK_CONFIGS}
@@ -229,6 +247,7 @@ def automatic_test_probe():
 
 
 @app.get("/api/bank")
+@require_local_admin
 def get_bank():
     try:
         return jsonify(summarized_bank(requested_bank_id()))
@@ -237,11 +256,13 @@ def get_bank():
 
 
 @app.get("/api/banks")
+@require_local_admin
 def get_banks():
     return jsonify({bank_id: summarized_bank(bank_id) for bank_id in BANK_CONFIGS})
 
 
 @app.post("/api/banks")
+@require_local_admin
 def create_bank():
     payload = request.get_json()
     label = payload["label"].strip()
