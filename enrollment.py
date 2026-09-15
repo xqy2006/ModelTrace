@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
+import orcarouter
 from fingerprint import analyze_global_outputs, generate_challenges, parse_numbers
 from bank_builder import build_bank, read_rows
 from challenge_suite import fingerprint_suite
@@ -169,6 +170,37 @@ def completion_url(base_url: str, api_format: str = "openai") -> str:
     return normalized + "/v1/chat/completions"
 
 
+def resolve_provider(provider_id: str, environ: dict[str, str] | None = None) -> dict:
+    """Return the request target for a provider id.
+
+    OrcaRouter is a first-class named provider: its inference origin comes from
+    the provider configuration rather than from a free-form base URL, so a user
+    cannot accidentally point an OrcaRouter entry at an arbitrary host.
+    """
+    provider_id = (provider_id or orcarouter.CUSTOM_PROVIDER_ID).strip()
+    if provider_id == orcarouter.CUSTOM_PROVIDER_ID:
+        return {"id": provider_id, "base_url": None, "auth_method": "base_url"}
+    return {
+        "id": provider_id,
+        "base_url": orcarouter.api_base(environ),
+        "auth_method": orcarouter.auth_method_for_provider(provider_id),
+    }
+
+
+def resolve_orcarouter_credential(
+    provider_id: str,
+    explicit_key: str | None = None,
+    *,
+    store: orcarouter.CredentialStore | None = None,
+    environ: dict[str, str] | None = None,
+) -> orcarouter.Credential:
+    """Both authentication choices arrive here and leave as one credential type."""
+    method = orcarouter.auth_method_for_provider(provider_id)
+    return orcarouter.resolve_credential(
+        method, explicit_key=explicit_key, store=store, environ=environ
+    )
+
+
 def _looks_like_waf_block(text: str) -> bool:
     lowered = text.lower()
     return any(
@@ -211,7 +243,12 @@ def _request_completion(
     temperature: float | None,
     api_format: str,
     system_prompt: str = "",
+    provider_id: str = orcarouter.CUSTOM_PROVIDER_ID,
+    credential: orcarouter.Credential | None = None,
 ) -> str:
+    target = resolve_provider(provider_id)
+    if target["base_url"]:
+        base_url = target["base_url"]
     if api_format == "anthropic":
         body_data = {
             "model": api_model,
@@ -260,7 +297,14 @@ def _request_completion(
             if attempt < MAX_ATTEMPTS and error.code in RETRYABLE_STATUS:
                 time.sleep(RETRY_BASE_DELAY * attempt + random.uniform(0, 0.5))
                 continue
-            raise RuntimeError(f"HTTP {error.code}: {message}{retried}") from error
+            if error.code == 401 and credential is not None:
+                orcarouter.mark_unauthorized(credential)
+                raise orcarouter.CredentialRejected(
+                    "OrcaRouter 凭据已被拒绝（HTTP 401）。该凭据可能已被撤销，"
+                    "请在 https://www.orcarouter.ai/console/authorized-apps 确认后重新连接；"
+                    "本工具不会尝试刷新凭据"
+                ) from error
+            raise RuntimeError(f"HTTP {error.code}: {orcarouter.redact(message)}{retried}") from error
         except urllib.error.URLError as error:
             reason = getattr(error, "reason", str(error))
             if attempt < MAX_ATTEMPTS:
@@ -297,18 +341,40 @@ def request_completion(
     temperature: float | None,
     api_format: str = "auto",
     system_prompt: str = "",
+    provider_id: str = orcarouter.CUSTOM_PROVIDER_ID,
+    credential: orcarouter.Credential | None = None,
 ) -> str:
     if api_format != "auto":
         return _request_completion(
-            base_url, api_key, api_model, prompt, temperature, api_format, system_prompt
+            base_url,
+            api_key,
+            api_model,
+            prompt,
+            temperature,
+            api_format,
+            system_prompt,
+            provider_id,
+            credential,
         )
     formats = ("openai", "anthropic")
     errors = []
     for candidate in formats:
         try:
             return _request_completion(
-                base_url, api_key, api_model, prompt, temperature, candidate, system_prompt
+                base_url,
+                api_key,
+                api_model,
+                prompt,
+                temperature,
+                candidate,
+                system_prompt,
+                provider_id,
+                credential,
             )
+        except orcarouter.CredentialRejected:
+            # A revoked credential is rejected by every wire format: retrying the
+            # second one would only repeat the 401.
+            raise
         except RuntimeError as error:
             errors.append(f"{candidate}: {error}")
     raise RuntimeError("接口格式自动探测失败；" + "；".join(errors))
@@ -321,6 +387,8 @@ def test_automatic(
     temperature: float | None,
     bank: dict,
     api_format: str = "openai",
+    provider_id: str = orcarouter.CUSTOM_PROVIDER_ID,
+    credential: orcarouter.Credential | None = None,
 ) -> dict:
     target_count = 3
     max_attempts = 6
@@ -336,6 +404,8 @@ def test_automatic(
                 challenge["prompt"],
                 temperature,
                 api_format,
+                provider_id=provider_id,
+                credential=credential,
             )
             minimum = max(80, math.ceil(challenge["expected_count"] * 0.55))
             parsed_count = len(parse_numbers(text))
@@ -375,6 +445,8 @@ def enroll_automatic(
     bank_file: Path = BANK_FILE,
     bank_id: str = "reference-bank",
     provider: str = "api",
+    provider_id: str = orcarouter.CUSTOM_PROVIDER_ID,
+    credential: orcarouter.Credential | None = None,
 ) -> dict:
     suite = fingerprint_suite()
     if sample_count < 3 or sample_count > len(suite):
@@ -400,6 +472,8 @@ def enroll_automatic(
                     temperature,
                     api_format,
                     system_prompt,
+                    provider_id,
+                    credential,
                 )
                 row = make_row(
                     model_label=model_label,

@@ -138,6 +138,9 @@ label code { color: var(--primary-dark); }
 .diagnostic.accepted { color: var(--success); background: var(--success-soft); }
 .diagnostic.rejected { color: var(--danger); background: var(--danger-soft); }
 .result-note { display: flex; justify-content: space-between; gap: 16px; padding: 10px 17px; color: var(--muted); font-size: 10px; border-top: 1px solid var(--line); }
+.result-guidance { padding: 12px 17px; color: var(--muted); font-size: 11px; line-height: 1.7; border-top: 1px solid var(--line); }
+.result-guidance p { margin: 0; }
+.result-guidance p + p { margin-top: 4px; }
 
 .inventory-panel { margin-bottom: 18px; }
 .simple-inventory { margin-bottom: 14px; }
