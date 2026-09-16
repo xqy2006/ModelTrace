@@ -40,6 +40,52 @@
     </section>
   </main>
 
+  <!-- file-protocol-guard:start -->
+  <noscript>
+    <div class="file-protocol-guard">
+      <strong>需要启用 JavaScript</strong>
+      <span>指纹库加载与归因计算都在浏览器本地完成，请允许本页执行 JavaScript 后重试。</span>
+    </div>
+  </noscript>
+  <script>
+    (function () {
+      if (location.protocol !== "file:") return;
+      var notice = document.createElement("div");
+      notice.className = "file-protocol-guard";
+      notice.innerHTML = '<strong>请勿用 file:// 直接打开本文件</strong>'
+        + '<span>浏览器会拦截 file:// 下的 ES 模块与指纹库读取，页面会一直停在“正在加载统一指纹库”。</span>'
+        + '<span>请改用在线页面 <a href="https://xqy2006.github.io/ModelTrace/" rel="noopener">xqy2006.github.io/ModelTrace</a>，'
+        + '或在项目目录运行 <code>python start.py</code> 后访问 <code>http://127.0.0.1:7860/</code>。</span>';
+      var message = document.getElementById("test-message");
+      if (message) { message.replaceWith(notice); } else { document.body.appendChild(notice); }
+    })();
+  </script>
+  <style>
+    .file-protocol-guard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 880px;
+      margin: 24px auto;
+      padding: 16px 18px;
+      border: 1px solid #d8a13a;
+      border-left-width: 4px;
+      border-radius: 10px;
+      background: #fff6e3;
+      color: #5b4310;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    .file-protocol-guard strong { font-size: 15px; }
+    .file-protocol-guard code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.07);
+      font-size: 13px;
+    }
+  </style>
+  <!-- file-protocol-guard:end -->
+
   <script type="module" src="./pages-app.js"></script>
 </body>
 </html>
