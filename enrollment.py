@@ -169,6 +169,21 @@ def completion_url(base_url: str, api_format: str = "openai") -> str:
     return normalized + "/v1/chat/completions"
 
 
+def models_url(base_url: str, api_format: str = "openai") -> str:
+    normalized = base_url.rstrip("/")
+    if api_format == "anthropic":
+        if normalized.endswith("/messages"):
+            return normalized[: -len("/messages")] + "/models"
+        if normalized.endswith("/v1"):
+            return normalized + "/models"
+        return normalized + "/v1/models"
+    if normalized.endswith("/chat/completions"):
+        return normalized[: -len("/chat/completions")] + "/models"
+    if normalized.endswith("/v1"):
+        return normalized + "/models"
+    return normalized + "/v1/models"
+
+
 def _looks_like_waf_block(text: str) -> bool:
     lowered = text.lower()
     return any(
@@ -312,6 +327,68 @@ def request_completion(
         except RuntimeError as error:
             errors.append(f"{candidate}: {error}")
     raise RuntimeError("接口格式自动探测失败；" + "；".join(errors))
+
+
+def _model_ids_from_payload(payload) -> list[str]:
+    if isinstance(payload, dict):
+        items = payload.get("data")
+        if items is None:
+            items = payload.get("models", [])
+    elif isinstance(payload, list):
+        items = payload
+    else:
+        items = []
+    ids = set()
+    for item in items:
+        if isinstance(item, str):
+            ids.add(item)
+        elif isinstance(item, dict):
+            model_id = item.get("id") or item.get("name")
+            if model_id:
+                ids.add(str(model_id))
+    return sorted(ids)
+
+
+def _list_models(base_url: str, api_key: str, api_format: str) -> list[str]:
+    if api_format == "anthropic":
+        headers = {
+            "x-api-key": api_key,
+            "Authorization": f"Bearer {api_key}",
+            "anthropic-version": "2023-06-01",
+            "Accept": "application/json",
+            "User-Agent": upstream_user_agent(),
+        }
+    else:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+            "User-Agent": upstream_user_agent(),
+        }
+    request = urllib.request.Request(models_url(base_url, api_format), headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"HTTP {error.code}: {_compact_upstream_error(details, error.reason)}") from error
+    except urllib.error.URLError as error:
+        reason = getattr(error, "reason", str(error))
+        raise RuntimeError(f"无法连接接口：{reason}") from error
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise RuntimeError("接口返回的不是有效 JSON，请确认 base_url 指向 API 端点") from error
+    return _model_ids_from_payload(payload)
+
+
+def list_models(base_url: str, api_key: str, api_format: str = "auto") -> list[str]:
+    if api_format != "auto":
+        return _list_models(base_url, api_key, api_format)
+    errors = []
+    for candidate in ("openai", "anthropic"):
+        try:
+            return _list_models(base_url, api_key, candidate)
+        except RuntimeError as error:
+            errors.append(f"{candidate}: {error}")
+    raise RuntimeError("无法获取模型列表；" + "；".join(errors))
 
 
 def test_automatic(

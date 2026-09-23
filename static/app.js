@@ -221,6 +221,45 @@ async function testViaApi(event) {
   button.disabled = false;
 }
 
+const modelFetchers = {
+  "fetch-test-models": { base: "test-api-base", key: "test-api-key", list: "test-model-options", message: "test-message" },
+  "fetch-enroll-models": { base: "api-base", key: "api-key", list: "enroll-model-options", message: "enrollment-message" },
+};
+
+async function fetchModelOptions(button, config) {
+  const base = byId(config.base).value.trim();
+  const apiKey = byId(config.key).value;
+  const messageElement = byId(config.message);
+  if (!base || !apiKey) {
+    setMessage(messageElement, "请先填写 Base URL 和 API Key，再获取模型列表。");
+    return;
+  }
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "获取中……";
+  setMessage(messageElement, "正在获取模型列表……", "working");
+  try {
+    const response = await fetch("/api/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base_url: base, api_key: apiKey }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "无法获取模型列表。");
+    byId(config.list).innerHTML = payload.models.map((model) => `<option value="${escapeHtml(model)}"></option>`).join("");
+    if (payload.models.length) {
+      setMessage(messageElement, `已获取 ${payload.models.length} 个模型，点击“接口模型名”输入框即可选择。`, "success");
+    } else {
+      setMessage(messageElement, "接口未返回任何模型，请手动填写模型名。");
+    }
+  } catch (error) {
+    setMessage(messageElement, error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 function updateUnifiedSummary(summary) {
   state.unified = summary;
   byId("topbar-bank-count").textContent = `${summary.model_count} 个候选模型`;
@@ -330,6 +369,9 @@ byId("bank-select").addEventListener("change", (event) => selectBank(event.targe
 byId("regenerate").addEventListener("click", loadChallenges);
 byId("analyze").addEventListener("click", analyzeManual);
 byId("api-test-form").addEventListener("submit", testViaApi);
+Object.entries(modelFetchers).forEach(([buttonId, config]) => {
+  byId(buttonId).addEventListener("click", (event) => fetchModelOptions(event.currentTarget, config));
+});
 byId("auto-enrollment").addEventListener("submit", enrollAutomatically);
 byId("show-create-bank").addEventListener("click", () => { byId("create-bank-form").hidden = !byId("create-bank-form").hidden; });
 byId("create-bank-form").addEventListener("submit", createBank);
