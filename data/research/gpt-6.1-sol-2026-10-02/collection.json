@@ -1,0 +1,41 @@
+{
+  "model": "gpt-6.1-sol",
+  "producer": "official Codex CLI 0.159.1 with existing ChatGPT sign-in",
+  "reasoning_effort": "low",
+  "templates_sha256": "08ed0bbd8d825123e8e325e0cc3c76531055dc468912376b3a6389d14a905bb6",
+  "logical_cli_calls": 46,
+  "unique_contexts": 45,
+  "all_unique_contexts": 46,
+  "first_attempt_gate_passes": 44,
+  "first_attempt_count": 45,
+  "first_attempt_enrollment": {
+    "usable": 35,
+    "n": 36
+  },
+  "first_attempt_holdout": {
+    "usable": 9,
+    "n": 9
+  },
+  "retained_failed_attempts": 1,
+  "gate_passes": 45,
+  "enrollment_rows": 36,
+  "holdout_rows": 9,
+  "exact_requested_counts": 33,
+  "shared_12_number_blocks": 2,
+  "source_limit": "One ephemeral CLI process per prompt; model selection and fresh contexts are declared provenance, not independent attestation. Codex built-in and host instructions remain present. Challenge system blocks are delivered as developer instructions. Full model request/harness text is not claimed to match a clean API request.",
+  "attempt_limit": "45 initial logical CLI calls on the compatible client, plus one reviewed fresh-context retry after query-31 returned only four numbers. The original is retained separately, and neither original nor retry was trimmed or repaired. No ranking was inspected to select a retry. CLI-internal connection retries are counted per row; logical calls are not independently observed backend generation attempts. The earlier incompatible CLI 0.153.4 trial had no reply and is retained separately.",
+  "independence_limit": "Shared-block screening is a diagnostic, not proof of independent generation.",
+  "enrollment_sha256": "cb30f94f7e075b636c1cf1092b2238e4282c7aa8493f2f84fd144a52bbf23f1c",
+  "holdout_sha256": "faaa5e11c58051fd4a6558117e6c8904922a4dace99fb9d9eca21d386905aa31",
+  "base_commit": "d4131b30243dfa05e70180b5eedde742103f1d73",
+  "failed_attempts_sha256": "18b85aad5a53bc163861a2b2cbe438f0419355ab972a8dd84ea4a0d4bc69f3ed",
+  "base_files_sha256": {
+    "data/gpt_reference.jsonl": "b87e5630286308fdcec0893b89873635bf274b64a5269f41039eb46e66d3793f",
+    "data/claude_reference.jsonl": "7cfe396406f62c83dd797a354c4ea6b4a13f90f938480c2ab80f395fbfc462f2",
+    "data/unified_bank.json": "e514c76928ea38d23bc0f14d3935f23c97b1efb6d96b18a19bdc88ad2d830536",
+    "bank_builder.py": "d30664990e69cdf54766197701cf28669cf3d8aa61457191bb2d6aa0745f4e36",
+    "fingerprint.py": "387fe5c44cc5f859995432267b0d3b462fc26e82419fc22e3ee7f36cc2502d98",
+    "challenge_suite.py": "aeebf20878ce11864c5cb7b1f6c0c7c2cf6dcfbb934244ff868b369e08a15032",
+    "static/fingerprint-core.js": "83fa5bd611e18f8339122582335123c8ea168ed242298bb31f4e363abeeb6e4a"
+  }
+}

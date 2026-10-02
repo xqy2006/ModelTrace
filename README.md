@@ -92,6 +92,8 @@ claude-opus-5-5
 
 GPT 采集自官方订阅 Codex，Claude 采集自 [OAIPro](https://api.oaipro.com/)。
 
+尚未启用的实验样本：[GPT-6.1 Sol（2026-10-02）](data/research/gpt-6.1-sol-2026-10-02/README.md)。包含 36 条录入、9 条独立留出及原始失败记录；与 GPT-6 Astra 重叠并导致已有模型回归，未加入上述默认指纹库。
+
 ## 声明
 
 测试结果仅供参考，并非判断模型的决定性证据

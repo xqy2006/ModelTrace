@@ -1,0 +1,683 @@
+{
+  "base_commit": "d4131b30243dfa05e70180b5eedde742103f1d73",
+  "models_before": 17,
+  "models_after": 18,
+  "responses_before": 612,
+  "responses_after": 648,
+  "gpt_reference_prefix_unchanged": true,
+  "before_cv": {
+    "1": {
+      "gpt-5.4": {
+        "correct": 30,
+        "n": 36
+      },
+      "gpt-5.5": {
+        "correct": 34,
+        "n": 36
+      },
+      "gpt-5.6-sol": {
+        "correct": 35,
+        "n": 36
+      },
+      "gpt-5.6-terra": {
+        "correct": 35,
+        "n": 36
+      },
+      "gpt-5.6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-astra": {
+        "correct": 35,
+        "n": 36
+      },
+      "gpt-6-sol": {
+        "correct": 33,
+        "n": 36
+      },
+      "gpt-6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-haiku-4-5-20251001": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5": {
+        "correct": 33,
+        "n": 36
+      },
+      "claude-opus-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-4-7": {
+        "correct": 35,
+        "n": 36
+      },
+      "claude-opus-4-8": {
+        "correct": 30,
+        "n": 36
+      },
+      "claude-opus-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-5-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5-5": {
+        "correct": 36,
+        "n": 36
+      }
+    },
+    "2": {
+      "gpt-5.4": {
+        "correct": 35,
+        "n": 36
+      },
+      "gpt-5.5": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-5.6-sol": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-5.6-terra": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-5.6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-astra": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-sol": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-haiku-4-5-20251001": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-4-7": {
+        "correct": 35,
+        "n": 36
+      },
+      "claude-opus-4-8": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-5-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5-5": {
+        "correct": 36,
+        "n": 36
+      }
+    },
+    "3": {
+      "gpt-5.4": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.5": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.6-sol": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.6-terra": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.6-luna": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-6-astra": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-6-sol": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-6-luna": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-haiku-4-5-20251001": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-sonnet-4-6": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-sonnet-5": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-4-6": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-4-7": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-4-8": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-5": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-5-5": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-sonnet-5-5": {
+        "correct": 12,
+        "n": 12
+      }
+    }
+  },
+  "after_cv": {
+    "1": {
+      "gpt-5.4": {
+        "correct": 30,
+        "n": 36
+      },
+      "gpt-5.5": {
+        "correct": 34,
+        "n": 36
+      },
+      "gpt-5.6-sol": {
+        "correct": 34,
+        "n": 36
+      },
+      "gpt-5.6-terra": {
+        "correct": 35,
+        "n": 36
+      },
+      "gpt-5.6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-astra": {
+        "correct": 25,
+        "n": 36
+      },
+      "gpt-6-sol": {
+        "correct": 32,
+        "n": 36
+      },
+      "gpt-6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6.1-sol": {
+        "correct": 20,
+        "n": 36
+      },
+      "claude-haiku-4-5-20251001": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5": {
+        "correct": 33,
+        "n": 36
+      },
+      "claude-opus-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-4-7": {
+        "correct": 35,
+        "n": 36
+      },
+      "claude-opus-4-8": {
+        "correct": 30,
+        "n": 36
+      },
+      "claude-opus-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-5-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5-5": {
+        "correct": 36,
+        "n": 36
+      }
+    },
+    "2": {
+      "gpt-5.4": {
+        "correct": 35,
+        "n": 36
+      },
+      "gpt-5.5": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-5.6-sol": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-5.6-terra": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-5.6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-astra": {
+        "correct": 25,
+        "n": 36
+      },
+      "gpt-6-sol": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6-luna": {
+        "correct": 36,
+        "n": 36
+      },
+      "gpt-6.1-sol": {
+        "correct": 24,
+        "n": 36
+      },
+      "claude-haiku-4-5-20251001": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-4-6": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-4-7": {
+        "correct": 35,
+        "n": 36
+      },
+      "claude-opus-4-8": {
+        "correct": 35,
+        "n": 36
+      },
+      "claude-opus-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-opus-5-5": {
+        "correct": 36,
+        "n": 36
+      },
+      "claude-sonnet-5-5": {
+        "correct": 36,
+        "n": 36
+      }
+    },
+    "3": {
+      "gpt-5.4": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.5": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.6-sol": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.6-terra": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-5.6-luna": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-6-astra": {
+        "correct": 9,
+        "n": 12
+      },
+      "gpt-6-sol": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-6-luna": {
+        "correct": 12,
+        "n": 12
+      },
+      "gpt-6.1-sol": {
+        "correct": 6,
+        "n": 12
+      },
+      "claude-haiku-4-5-20251001": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-sonnet-4-6": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-sonnet-5": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-4-6": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-4-7": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-4-8": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-5": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-opus-5-5": {
+        "correct": 12,
+        "n": 12
+      },
+      "claude-sonnet-5-5": {
+        "correct": 12,
+        "n": 12
+      }
+    }
+  },
+  "existing_model_cv_changes": [
+    {
+      "queries": 1,
+      "model": "gpt-5.6-sol",
+      "before": {
+        "correct": 35,
+        "n": 36
+      },
+      "after": {
+        "correct": 34,
+        "n": 36
+      }
+    },
+    {
+      "queries": 1,
+      "model": "gpt-6-astra",
+      "before": {
+        "correct": 35,
+        "n": 36
+      },
+      "after": {
+        "correct": 25,
+        "n": 36
+      }
+    },
+    {
+      "queries": 1,
+      "model": "gpt-6-sol",
+      "before": {
+        "correct": 33,
+        "n": 36
+      },
+      "after": {
+        "correct": 32,
+        "n": 36
+      }
+    },
+    {
+      "queries": 2,
+      "model": "gpt-6-astra",
+      "before": {
+        "correct": 36,
+        "n": 36
+      },
+      "after": {
+        "correct": 25,
+        "n": 36
+      }
+    },
+    {
+      "queries": 2,
+      "model": "claude-opus-4-8",
+      "before": {
+        "correct": 36,
+        "n": 36
+      },
+      "after": {
+        "correct": 35,
+        "n": 36
+      }
+    },
+    {
+      "queries": 3,
+      "model": "gpt-6-astra",
+      "before": {
+        "correct": 12,
+        "n": 12
+      },
+      "after": {
+        "correct": 9,
+        "n": 12
+      }
+    }
+  ],
+  "holdout": {
+    "singles": [
+      {
+        "challenge": "query-10",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-11",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-12",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6.1-sol",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-13",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-14",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6.1-sol",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-15",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-16",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6.1-sol",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-17",
+        "before": {
+          "prediction": "gpt-5.6-sol",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6.1-sol",
+          "used_outputs": 1
+        }
+      },
+      {
+        "challenge": "query-18",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 1
+        },
+        "after": {
+          "prediction": "gpt-6.1-sol",
+          "used_outputs": 1
+        }
+      }
+    ],
+    "groups": [
+      {
+        "condition": "environment-04",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 3
+        },
+        "after": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 3
+        }
+      },
+      {
+        "condition": "environment-05",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 3
+        },
+        "after": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 3
+        }
+      },
+      {
+        "condition": "environment-06",
+        "before": {
+          "prediction": "gpt-6-astra",
+          "used_outputs": 3
+        },
+        "after": {
+          "prediction": "gpt-6.1-sol",
+          "used_outputs": 3
+        }
+      }
+    ]
+  },
+  "calibration": {
+    "1": {
+      "beta": 6.433276495181678,
+      "cv_accuracy": 0.9197530864197531,
+      "cv_correct": 596,
+      "cv_samples": 648,
+      "cv_nll": 0.25401945797519865,
+      "fallback": false
+    },
+    "2": {
+      "beta": 9.7039390577783,
+      "cv_accuracy": 0.9598765432098766,
+      "cv_correct": 622,
+      "cv_samples": 648,
+      "cv_nll": 0.1036742482114095,
+      "fallback": false
+    },
+    "3": {
+      "beta": 10.392037397570373,
+      "cv_accuracy": 0.9583333333333334,
+      "cv_correct": 207,
+      "cv_samples": 216,
+      "cv_nll": 0.07956311653841645,
+      "fallback": false
+    }
+  },
+  "independent_identity_attestation": false
+}
