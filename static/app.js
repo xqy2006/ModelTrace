@@ -3,9 +3,13 @@ const state = {
   bankId: window.DEFAULT_BANK_ID,
   bank: window.BANK_SUMMARIES[window.DEFAULT_BANK_ID],
   unified: window.UNIFIED_SUMMARY,
+  providers: [],
+  providerForms: [],
 };
 
 const byId = (id) => document.getElementById(id);
+const OrcaProvider = window.OrcaRouterProvider;
+const OrcaConnect = window.OrcaRouterConnect;
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, (character) => ({
@@ -39,6 +43,351 @@ function activateMode(group, name) {
     item.classList.toggle("active", item.id === `${group}-${name}` || item.id === `library-${name}`);
   });
 }
+
+/* ------------------------------------------------------------------ *
+ * OrcaRouter provider + model selection
+ * ------------------------------------------------------------------ */
+
+function renderProviderOptions(select, selected) {
+  select.innerHTML = state.providers
+    .map((provider) => `<option value="${escapeHtml(provider.id)}"${provider.id === selected ? " selected" : ""}>${escapeHtml(provider.label)}</option>`)
+    .join("");
+}
+
+function selectedModel(form) {
+  if (!OrcaProvider.isOrcaRouter(form.providerId)) return form.customModel.value.trim();
+  return form.combobox ? form.combobox.value : "";
+}
+
+function clearSelectedModel(form, message) {
+  if (form.combobox) {
+    form.combobox.value = "";
+    form.combobox.render();
+  }
+  form.customModel.value = "";
+  if (message) form.modelMessage(message);
+}
+
+function setFormVisibility(form) {
+  const orcarouter = OrcaProvider.isOrcaRouter(form.providerId);
+  form.root.querySelectorAll("[data-provider-field]").forEach((field) => {
+    field.hidden = false;
+  });
+  form.root.querySelectorAll("[data-provider-field=base_url], [data-provider-field=api_key]").forEach((field) => {
+    field.hidden = orcarouter;
+  });
+  form.root.querySelectorAll("[data-model-field=custom]").forEach((field) => { field.hidden = orcarouter; });
+  form.root.querySelectorAll("[data-model-field=orcarouter]").forEach((field) => { field.hidden = !orcarouter; });
+  const credential = form.root.querySelector(".orca-inline-credential");
+  if (credential) credential.hidden = !orcarouter;
+  // The generic base_url / API Key pair must not keep `required` while hidden:
+  // a hidden required field silently blocks the form in most browsers.
+  form.root.querySelectorAll("input").forEach((input) => {
+    if (input.dataset.originalRequired === undefined) {
+      input.dataset.originalRequired = input.required ? "1" : "0";
+    }
+    const field = input.closest("[data-provider-field]");
+    input.required = input.dataset.originalRequired === "1" && !(field && field.hidden);
+  });
+  const orcarouterOnly = form.root.querySelector("[data-orca-submit]");
+  if (orcarouterOnly) orcarouterOnly.disabled = false;
+}
+
+function renderModelOptions(form) {
+  if (!form.combobox) return;
+  const capability = form.capability;
+  const modality = form.modality ? form.modality() : null;
+  if (!OrcaProvider.catalogMatches(capability, modality)) {
+    // Never render a mismatch as an empty selector: the catalog for another
+    // capability is not evidence that this entry point has no models.
+    form.combobox.setStatus("正在读取 OrcaRouter 模型目录……", {});
+    return;
+  }
+  const catalog = OrcaProvider.state.catalog;
+  form.combobox.setOptions(
+    OrcaProvider.compatibleOptions(capability, modality),
+    OrcaProvider.catalogStatusLabel(catalog),
+    {
+      degraded: Boolean(catalog && catalog.degraded),
+      error: (catalog && catalog.error) || "",
+      source: (catalog && catalog.source) || "none",
+    }
+  );
+}
+
+async function reloadCatalog(form, options) {
+  const config = options || {};
+  const modality = form.modality ? form.modality() : null;
+  const catalog = await OrcaProvider.loadCatalog({
+    providerId: form.providerId,
+    capability: form.capability,
+    modality: modality,
+    refresh: Boolean(config.refresh),
+  });
+  // A model that is no longer offered must be dropped instead of being kept as
+  // a silently wrong value.
+  const current = form.combobox ? form.combobox.value : "";
+  if (current && !OrcaProvider.isCompatible(current, form.capability, modality)) {
+    clearSelectedModel(form, `已选模型 ${current} 不再满足当前入口的能力要求，请重新选择`);
+  }
+  renderModelOptions(form);
+  return catalog;
+}
+
+async function applyProvider(form, options) {
+  const config = options || {};
+  form.providerId = form.providerSelect.value;
+  setFormVisibility(form);
+  if (!OrcaProvider.isOrcaRouter(form.providerId)) {
+    renderModelOptions(form);
+    return;
+  }
+  if (config.teardownConnect !== false && OrcaConnect) OrcaConnect.teardown();
+  await reloadCatalog(form, { refresh: Boolean(config.refresh) });
+  form.syncModelToList();
+}
+
+function createModelCombobox(container, form) {
+  const fieldKey = container.dataset.orcaModelSelect;
+  container.innerHTML = `
+    <button type="button" class="orca-select-trigger" id="${fieldKey}-api-model-trigger" aria-haspopup="listbox" aria-expanded="false" data-orca-model-trigger>
+      <span data-orca-model-label>请选择模型</span><span class="orca-select-caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="orca-select-panel" role="listbox" hidden data-orca-model-panel>
+      <input type="search" class="orca-select-search" placeholder="搜索模型" aria-label="搜索模型" data-orca-model-search>
+      <p class="orca-select-status" data-orca-model-status></p>
+      <ul class="orca-select-options" data-orca-model-options></ul>
+    </div>
+  `;
+  const trigger = container.querySelector("[data-orca-model-trigger]");
+  const panel = container.querySelector("[data-orca-model-panel]");
+  const search = container.querySelector("[data-orca-model-search]");
+  const list = container.querySelector("[data-orca-model-options]");
+  const label = container.querySelector("[data-orca-model-label]");
+  const status = container.querySelector("[data-orca-model-status]");
+  let options = [];
+  let meta = { source: "none" };
+
+  const combobox = {
+    get value() { return container.dataset.value || ""; },
+    set value(next) {
+      container.dataset.value = next || "";
+      const match = options.find((model) => model.id === next);
+      label.textContent = match ? match.name || match.id : (next || "请选择模型");
+    },
+    get open() { return !panel.hidden; },
+    openPanel() {
+      panel.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+      search.value = "";
+      renderList("");
+      search.focus();
+    },
+    closePanel() {
+      panel.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+    },
+    setStatus(statusLabel, extra) {
+      meta = extra || meta;
+      status.textContent = statusLabel || "";
+      status.className = `orca-select-status${meta.degraded ? " degraded" : ""}`;
+    },
+    setOptions(next, statusLabel, extra) {
+      options = next || [];
+      combobox.setStatus(statusLabel, extra);
+      if (combobox.value && !options.some((model) => model.id === combobox.value)) {
+        combobox.value = "";
+      }
+      combobox.render();
+      if (combobox.open) renderList(search.value);
+    },
+    render() {
+      if (!combobox.value) label.textContent = options.length ? "请选择模型" : "无可用模型";
+    },
+    options() { return options; },
+    meta() { return meta; },
+    element: container,
+    trigger,
+    panel,
+  };
+
+  function renderList(query) {
+    const needle = (query || "").trim().toLowerCase();
+    const visible = needle
+      ? options.filter((model) => `${model.id} ${model.name || ""}`.toLowerCase().includes(needle))
+      : options;
+    list.innerHTML = visible.length
+      ? visible.map((model) => {
+        const bits = [model.owned_by, model.context_length ? `${model.context_length} ctx` : ""].filter(Boolean).join(" · ");
+        return `<li role="option" data-model-option="${escapeHtml(model.id)}" aria-selected="${model.id === combobox.value}">
+          <strong>${escapeHtml(model.id)}</strong><small>${escapeHtml(bits)}</small>
+          ${model.input_modalities && model.input_modalities.length ? `<em>${escapeHtml(model.input_modalities.join("/"))}</em>` : ""}
+        </li>`;
+      }).join("")
+      : `<li class="orca-select-empty">没有匹配的模型</li>`;
+    list.dataset.count = String(visible.length);
+    list.querySelectorAll("[data-model-option]").forEach((item) => {
+      item.addEventListener("click", () => {
+        combobox.value = item.dataset.modelOption;
+        combobox.closePanel();
+        form.syncModelToList();
+      });
+    });
+  }
+
+  trigger.addEventListener("click", () => {
+    if (combobox.open) combobox.closePanel();
+    else combobox.openPanel();
+  });
+  search.addEventListener("input", () => renderList(search.value));
+  container.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") combobox.closePanel();
+  });
+  document.addEventListener("click", (event) => {
+    if (!container.contains(event.target)) combobox.closePanel();
+  });
+  return combobox;
+}
+
+function createCustomCombobox() {
+  return {
+    get value() { return ""; },
+    set value(_next) {},
+    render() {},
+    setStatus() {},
+    setOptions() {},
+    options() { return []; },
+    meta() { return { source: "custom" }; },
+    closePanel() {},
+    element: null,
+    trigger: null,
+    panel: null,
+  };
+}
+
+function initProviderForm(config) {
+  const form = {
+    providerSelect: byId(config.selectId),
+    root: byId(config.rootId),
+    customModel: byId(config.modelInputId),
+    capability: config.capability || "chat",
+    modality: config.modality || null,
+    modelMessage: config.onModelMessage || (() => {}),
+    syncModelToList: () => {},
+    providerId: "custom",
+    combobox: null,
+  };
+  const container = form.root.querySelector(config.comboboxSelector);
+  form.combobox = container ? createModelCombobox(container, form) : createCustomCombobox();
+  form.syncModelToList = config.syncModelToList || (() => {});
+  renderProviderOptions(form.providerSelect, config.defaultProvider || "custom");
+  form.providerId = form.providerSelect.value;
+  form.providerSelect.addEventListener("change", () => {
+    // Switching provider or authentication method must release the login lock.
+    applyProvider(form, { teardownConnect: true });
+    form.syncModelToList();
+  });
+  state.providerForms.push(form);
+  return form;
+}
+
+function requestContext(form) {
+  const providerId = form.providerId;
+  const model = selectedModel(form);
+  if (OrcaProvider.isOrcaRouter(providerId)) {
+    return { provider_id: providerId, api_model: model, base_url: "" };
+  }
+  return {
+    provider_id: providerId,
+    api_model: model,
+    base_url: (form.root.querySelector("#test-api-base, #api-base") || {}).value || "",
+    api_key: (form.root.querySelector("#test-api-key, #api-key") || {}).value || "",
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * credential status + connect dialog
+ * ------------------------------------------------------------------ */
+
+function credentialSummary(credential) {
+  if (!credential || !credential.configured) {
+    return credential && credential.needs_reauth ? "已失效，请重新连接" : "未配置";
+  }
+  const origin = credential.source === "env" ? "环境变量" : credential.source === "api_key" ? "API Key" : "账户授权";
+  return `${origin} · ${credential.masked || "已保存"}`;
+}
+
+function renderCredentialState(credential) {
+  const text = credentialSummary(credential);
+  ["test-orca-credential-state", "enroll-orca-credential-state", "orca-credential-state"].forEach((id) => {
+    const element = byId(id);
+    if (element) element.textContent = text;
+  });
+  window.ORCA_CREDENTIAL = credential;
+}
+
+async function refreshCredentialState() {
+  const credential = await OrcaProvider.refreshCredential();
+  renderCredentialState(credential);
+  return credential;
+}
+
+window.onOrcaRouterCredentialChanged = (credential) => {
+  renderCredentialState(credential);
+  state.providerForms.forEach((form) => {
+    if (OrcaProvider.isOrcaRouter(form.providerId)) reloadCatalog(form, { refresh: true });
+  });
+};
+
+function openConnectDialog() {
+  const dialog = byId("orca-connect-dialog");
+  if (!dialog) return;
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "");
+  refreshCredentialState();
+}
+
+function closeConnectDialog() {
+  // Closing the dialog is a terminal path: release the login lock.
+  if (OrcaConnect) OrcaConnect.teardown();
+  const dialog = byId("orca-connect-dialog");
+  if (!dialog) return;
+  if (typeof dialog.close === "function" && dialog.open) dialog.close();
+  else dialog.removeAttribute("open");
+}
+
+function bindConnectDialog() {
+  document.querySelectorAll("[data-orca-open-connect]").forEach((button) => {
+    button.addEventListener("click", openConnectDialog);
+  });
+  document.querySelectorAll("[data-orca-close-connect]").forEach((button) => {
+    button.addEventListener("click", closeConnectDialog);
+  });
+  const start = document.querySelector("[data-orca-start-login]");
+  if (start) start.addEventListener("click", () => OrcaConnect.startLogin({ openBrowser: true }));
+  const cancel = document.querySelector("[data-orca-cancel-login]");
+  if (cancel) cancel.addEventListener("click", () => OrcaConnect.teardown());
+  const submitCode = document.querySelector("[data-orca-submit-code]");
+  if (submitCode) {
+    submitCode.addEventListener("click", () => {
+      const input = byId("orca-auth-code");
+      if (input && input.value.trim()) OrcaConnect.submitCode(input.value.trim());
+    });
+  }
+  const saveKey = document.querySelector("[data-orca-save-key]");
+  if (saveKey) {
+    saveKey.addEventListener("click", () => {
+      const input = byId("orca-api-key");
+      if (input && input.value.trim()) OrcaConnect.saveApiKey(input.value.trim());
+    });
+  }
+  const clearKey = document.querySelector("[data-orca-clear-key]");
+  if (clearKey) clearKey.addEventListener("click", () => OrcaConnect.clearCredential());
+}
+
+/* ------------------------------------------------------------------ *
+ * manual test
+ * ------------------------------------------------------------------ */
 
 async function loadChallenges() {
   byId("regenerate").disabled = true;
@@ -142,10 +491,17 @@ function renderApiProgress(states, status) {
 
 async function testViaApi(event) {
   event.preventDefault();
+  const form = state.providerForms.find((item) => item.root.id === "api-test-form");
   const button = event.currentTarget.querySelector("button[type=submit]");
   button.disabled = true;
   byId("result").hidden = true;
   setMessage(byId("test-message"), "");
+
+  if (OrcaProvider.isOrcaRouter(form.providerId) && !selectedModel(form)) {
+    setMessage(byId("test-message"), "请先从 OrcaRouter 模型目录中选择一个模型。", "error");
+    button.disabled = false;
+    return;
+  }
 
   const challengeResponse = await fetch("/api/challenges");
   const firstBatch = (await challengeResponse.json()).challenges;
@@ -156,9 +512,7 @@ async function testViaApi(event) {
   const errors = [];
   const target = 3;
   const configuration = {
-    base_url: byId("test-api-base").value,
-    api_key: byId("test-api-key").value,
-    api_model: byId("test-api-model").value,
+    ...requestContext(form),
     temperature: optionalNumber("test-temperature"),
   };
   renderApiProgress(states, "已生成独立挑战，准备调用模型");
@@ -177,6 +531,7 @@ async function testViaApi(event) {
         }),
       });
       const payload = await response.json();
+      if (payload.credential) renderCredentialState(payload.credential);
       if (!response.ok) throw new Error(payload.error || "接口请求失败");
       if (payload.accepted) {
         outputs.push({ text: payload.text, expected_count: challenges[index].expected_count });
@@ -250,7 +605,12 @@ async function selectBank(bankId) {
 
 async function enrollAutomatically(event) {
   event.preventDefault();
+  const form = state.providerForms.find((item) => item.root.id === "auto-enrollment");
   const button = event.currentTarget.querySelector("button[type=submit]");
+  if (OrcaProvider.isOrcaRouter(form.providerId) && !selectedModel(form)) {
+    setMessage(byId("enrollment-message"), "请先从 OrcaRouter 模型目录中选择一个模型。", "error");
+    return;
+  }
   button.disabled = true;
   const requested = Number(byId("sample-count").value);
   const started = Date.now();
@@ -264,9 +624,7 @@ async function enrollAutomatically(event) {
     response = await fetch("/api/enroll/auto", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        base_url: byId("api-base").value,
-        api_key: byId("api-key").value,
-        api_model: byId("api-model").value,
+        ...requestContext(form),
         bank_id: state.bankId,
         model_label: byId("auto-model").value,
         sample_count: requested,
@@ -281,6 +639,7 @@ async function enrollAutomatically(event) {
   }
   window.clearInterval(progressTimer);
   const payload = await response.json();
+  if (payload.credential) renderCredentialState(payload.credential);
   if (response.ok) {
     state.bank = payload.bank;
     updateUnifiedSummary(payload.unified);
@@ -324,6 +683,46 @@ async function createBank(event) {
   button.disabled = false;
 }
 
+async function bootstrap() {
+  state.providers = await OrcaProvider.loadProviders();
+  const testForm = initProviderForm({
+    selectId: "test-provider",
+    rootId: "api-test-form",
+    modelInputId: "test-api-model",
+    comboboxSelector: '[data-orca-model-select="test"]',
+    capability: "chat",
+    modality: () => null,
+    onModelMessage: (message) => setMessage(byId("test-message"), message, "working"),
+    syncModelToList: () => {},
+  });
+  const enrollForm = initProviderForm({
+    selectId: "enroll-provider",
+    rootId: "auto-enrollment",
+    modelInputId: "api-model",
+    comboboxSelector: '[data-orca-model-select="enroll"]',
+    capability: "chat",
+    modality: () => null,
+    onModelMessage: (message) => setMessage(byId("enrollment-message"), message, "working"),
+    syncModelToList: () => {},
+  });
+  // Keep the two entry points consistent: choosing a provider on one form
+  // selects it on the other, and both re-derive their model options.
+  testForm.providerSelect.addEventListener("change", () => {
+    enrollForm.providerSelect.value = testForm.providerId;
+    applyProvider(enrollForm, { teardownConnect: false });
+  });
+  enrollForm.providerSelect.addEventListener("change", () => {
+    testForm.providerSelect.value = enrollForm.providerId;
+    applyProvider(testForm, { teardownConnect: false });
+  });
+
+  bindConnectDialog();
+  OrcaConnect.bindPageLifecycle();
+  await refreshCredentialState();
+  await applyProvider(testForm, { teardownConnect: false });
+  await applyProvider(enrollForm, { teardownConnect: false });
+}
+
 document.querySelectorAll("[data-workspace]").forEach((button) => button.addEventListener("click", () => activateWorkspace(button.dataset.workspace)));
 document.querySelectorAll("[data-test-mode]").forEach((button) => button.addEventListener("click", () => activateMode("test", button.dataset.testMode)));
 byId("bank-select").addEventListener("change", (event) => selectBank(event.target.value));
@@ -336,3 +735,4 @@ byId("create-bank-form").addEventListener("submit", createBank);
 
 renderInventory();
 loadChallenges();
+bootstrap();

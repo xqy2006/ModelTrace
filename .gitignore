@@ -4,3 +4,8 @@ __pycache__/
 *.log
 .venv/
 node_modules/
+
+# GUI evidence is produced by `python tests/capture_gui_evidence.py` against a
+# running instance; the screenshots and manifest are verification output, not
+# sources, so they are never committed.
+orca-evidence/

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ModelTrace</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='orcarouter.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='repository-link.css') }}">
 </head>
 <body>
@@ -44,12 +45,19 @@
         <section id="test-api" class="mode-panel">
           <form id="api-test-form" class="form-panel">
             <div class="form-grid two">
-              <label><span>Base URL</span><input id="test-api-base" required placeholder="https://example.com/v1"></label>
-              <label><span>接口模型名</span><input id="test-api-model" required placeholder="模型名"></label>
-              <label><span>API Key</span><input id="test-api-key" type="password" required autocomplete="off"></label>
+              <label><span>服务提供方</span><select id="test-provider" data-orca-provider></select></label>
+              <div class="form-field" data-model-field="custom"><span>接口模型名</span><input id="test-api-model" placeholder="模型名"></div>
+              <div class="form-field" data-model-field="orcarouter" hidden><span>接口模型名</span><div class="orca-select" data-orca-model-select="test"></div></div>
+              <label data-provider-field="base_url"><span>Base URL</span><input id="test-api-base" placeholder="https://example.com/v1"></label>
+              <label data-provider-field="api_key"><span>API Key</span><input id="test-api-key" type="password" autocomplete="off"></label>
               <label><span>温度（可选）</span><input id="test-temperature" type="number" min="0" max="2" step="0.1" placeholder="接口默认"></label>
             </div>
-            <div class="form-footer"><button class="button primary" type="submit">开始测试</button></div>
+            <div id="test-orca-credential" class="orca-inline-credential">
+              <span>OrcaRouter 凭据</span>
+              <strong id="test-orca-credential-state">未配置</strong>
+              <button class="button secondary" type="button" data-orca-connect-action data-orca-open-connect>接入 OrcaRouter</button>
+            </div>
+            <div class="form-footer"><button class="button primary" type="submit" data-orca-submit>开始测试</button></div>
           </form>
           <section id="api-test-progress" class="progress-panel" hidden aria-live="polite">
             <div class="progress-heading"><strong id="api-progress-status">准备测试</strong><span id="api-progress-count">有效 0/3 · 已尝试 0/6</span></div>
@@ -84,14 +92,21 @@
         <form id="auto-enrollment" class="form-panel">
           <div class="form-heading"><strong>新建指纹</strong></div>
           <div class="form-grid two">
-            <label><span>Base URL</span><input id="api-base" required placeholder="https://example.com/v1"></label>
-            <label><span>接口模型名</span><input id="api-model" required placeholder="实际请求使用的模型名"></label>
-            <label><span>API Key</span><input id="api-key" type="password" required autocomplete="off"></label>
+            <label><span>服务提供方</span><select id="enroll-provider" data-orca-provider></select></label>
+            <div class="form-field" data-model-field="custom"><span>接口模型名</span><input id="api-model" placeholder="实际请求使用的模型名"></div>
+            <div class="form-field" data-model-field="orcarouter" hidden><span>接口模型名</span><div class="orca-select" data-orca-model-select="enroll"></div></div>
+            <label data-provider-field="base_url"><span>Base URL</span><input id="api-base" placeholder="https://example.com/v1"></label>
+            <label data-provider-field="api_key"><span>API Key</span><input id="api-key" type="password" autocomplete="off"></label>
             <label><span>指纹名称</span><input id="auto-model" list="model-options" required placeholder="例如 model-version-name"></label>
             <label><span>采集回答数</span><input id="sample-count" type="number" min="3" max="36" value="36" required></label>
             <label><span>温度（可选）</span><input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="接口默认"></label>
           </div>
-          <div class="form-footer"><button class="button primary" type="submit">自动采集并建立指纹</button></div>
+          <div id="enroll-orca-credential" class="orca-inline-credential">
+            <span>OrcaRouter 凭据</span>
+            <strong id="enroll-orca-credential-state">未配置</strong>
+            <button class="button secondary" type="button" data-orca-connect-action data-orca-open-connect>接入 OrcaRouter</button>
+          </div>
+          <div class="form-footer"><button class="button primary" type="submit" data-orca-submit>自动采集并建立指纹</button></div>
         </form>
 
         <div id="enrollment-message" class="message" hidden></div>
@@ -99,8 +114,51 @@
     </main>
   </div>
 
+  <dialog id="orca-connect-dialog" class="orca-dialog" aria-labelledby="orca-connect-title">
+    <form method="dialog" class="orca-dialog-head">
+      <img class="orca-logo" src="{{ url_for('static', filename='orca-logo.png') }}" alt="OrcaRouter" width="34" height="34">
+      <div><h2 id="orca-connect-title">接入 OrcaRouter</h2><p>两种方式获得同一把 <code>sk-orca-…</code> 密钥，任选其一即可。</p></div>
+      <button class="button secondary" type="button" data-orca-connect-action data-orca-close-connect aria-label="关闭">关闭</button>
+    </form>
+
+    <div class="orca-methods">
+      <section class="orca-method" data-auth-method="api_key">
+        <header><h3>OrcaRouter - API</h3><span class="status-tag ok">API Key</span></header>
+        <p>已有密钥？直接粘贴，模型归因请求会以 Bearer 方式带上它。</p>
+        <label><span>API Key（sk-orca-…）</span><input id="orca-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-orca-…"></label>
+        <p class="orca-note">密钥只保存在本机，不写入仓库，也不会回显。</p>
+        <div class="orca-actions">
+          <button class="button primary" type="button" data-orca-connect-action data-orca-save-key>保存 API Key</button>
+          <button class="button secondary" type="button" data-orca-connect-action data-orca-clear-key>清除已保存凭据</button>
+        </div>
+      </section>
+
+      <section class="orca-method" data-auth-method="pkce">
+        <header><h3>OrcaRouter - Auth</h3><span class="status-tag ok">OAuth 2.0 + PKCE</span></header>
+        <p>没有密钥？用 OrcaRouter 账户授权，浏览器里点一次即可，不需要 client secret。</p>
+        <div class="orca-actions">
+          <button class="button primary" type="button" data-orca-connect-action data-orca-start-login>连接 OrcaRouter 账户</button>
+          <button class="button secondary" type="button" data-orca-connect-action data-orca-cancel-login>取消授权</button>
+        </div>
+        <div id="orca-connect-url" hidden>
+          <label><span>授权链接（浏览器未自动打开时复制它）</span><input id="orca-authorize-url" type="text" readonly></label>
+        </div>
+        <div id="orca-connect-code-row" hidden>
+          <label><span>授权码（在同意页面选择“显示授权码”时粘贴到这里）</span><input id="orca-auth-code" type="text" autocomplete="off" spellcheck="false" placeholder="粘贴授权码"></label>
+          <button class="button secondary" type="button" data-orca-connect-action data-orca-submit-code>用授权码完成连接</button>
+        </div>
+        <p class="orca-note">授权码使用 S256 PKCE 校验，10 分钟内单次有效；换回的密钥是长期有效的普通 API Key，不会被自动刷新。</p>
+      </section>
+    </div>
+
+    <div id="orca-connect-status" class="message" hidden aria-live="polite"></div>
+    <p class="orca-note">凭据状态：<strong id="orca-credential-state">未配置</strong> · 撤销入口 <a href="https://www.orcarouter.ai/console/authorized-apps" target="_blank" rel="noopener noreferrer">OrcaRouter 已授权应用</a></p>
+  </dialog>
+
   <datalist id="model-options">{% for model in bank.models %}<option value="{{ model.id }}">{% endfor %}</datalist>
   <script>window.BANK_SUMMARIES = {{ banks | tojson }}; window.UNIFIED_SUMMARY = {{ unified | tojson }}; window.DEFAULT_BANK_ID = {{ default_bank_id | tojson }};</script>
+  <script src="{{ url_for('static', filename='orcarouter-provider.js') }}"></script>
+  <script src="{{ url_for('static', filename='orcarouter-connect.js') }}"></script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

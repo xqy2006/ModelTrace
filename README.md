@@ -18,11 +18,39 @@ python start.py
 ## 使用
 
 - **手动测试**：复制三条挑战，分别发送给同一个待测模型，再粘贴每次完整输出。
-- **API 自动测试**：填写 Base URL、API Key 和模型名。程序会自动尝试 OpenAI Chat Completions 与 Anthropic Messages 格式，以三份有效回答为目标完成归因。
+- **API 自动测试**：选择服务提供方，填写所需信息。程序会自动尝试 OpenAI Chat Completions 与 Anthropic Messages 格式，以三份有效回答为目标完成归因。
 - **指纹库管理**：可以新建指纹库，或通过 API 为现有指纹库添加模型指纹。
 
-API Key 只用于当前页面发起请求，不写入磁盘。
+自定义提供方需要填写 Base URL、API Key 和模型名。OrcaRouter 提供方不需要填写这些内容，见下节。
+
+### OrcaRouter 提供方
+
+服务提供方选择 **OrcaRouter - API** 或 **OrcaRouter - Auth** 后，模型名不再手动输入，而是从 OrcaRouter 的实时模型目录中按当前能力筛选出的下拉列表选择。两种接入方式获得的都是同一把 `sk-orca-…` 密钥，归因请求同样发往 `https://api.orcarouter.ai/v1`。
+
+| 接入方式 | 提供方 | 凭据来源 |
+| --- | --- | --- |
+| API Key | OrcaRouter - API | 粘贴已有 `sk-orca-…` 密钥，或用 `ORCAROUTER_API_KEY` 环境变量 |
+| 账户授权 | OrcaRouter - Auth | OAuth 2.0 + PKCE（S256）浏览器授权，无需 client secret |
+
+授权流程使用本机回环地址接收回调（Flow A），因此不需要预先注册回调地址；若在同意页面选择“显示授权码”，把授权码粘贴回对话框即可。授权入口固定为 `https://www.orcarouter.ai/auth`，兑换固定为 `https://www.orcarouter.ai/api/v1/auth/keys`，模型目录与推理固定为 `https://api.orcarouter.ai/v1`。
+
+凭据保存在 `~/.modeltrace/orcarouter.json`（权限 0600，可用 `MODELTRACE_CREDENTIAL_FILE` 覆盖），也可以用 `ORCA_BASE_URL` 统一覆盖自建部署地址，或用 `ORCA_AUTH_BASE_URL`、`ORCA_API_BASE_URL` 分别覆盖认证与推理地址。可以在界面上清除已保存凭据，或在 [OrcaRouter 已授权应用](https://www.orcarouter.ai/console/authorized-apps) 一键撤销。
+
+PKCE 换回的是长期有效的普通 API Key，不是 refresh token：程序会一直复用它，直到被撤销，不会主动刷新，也不会每次启动重新授权。若推理请求返回 `401`，说明该凭据已被撤销，界面会标记需要重新连接并提示重新授权，而不是重试或伪造刷新。
+
+模型目录来自 `GET {接口地址}/models`，请求由后端携带凭据发出，浏览器只会拿到模型 ID、上下文长度、输入模态等最小元数据。目录不可用时不会退化成自由输入，而是显示最近一次成功获取的列表或一小份已验证的备用列表，并在界面上标注为降级状态。
+
+自定义提供方需要填写 Base URL、API Key 和模型名。API Key 只用于当前页面发起请求，不写入磁盘。
 自动采集会在对应的 `*_reference.jsonl` 中保存实际 user prompt、base prompt、system prompt 和 user prefix；拟合后的 `*_bank.json` 与 `unified_bank.json` 只保存统计指纹和校准参数。
+
+## 测试
+
+```powershell
+python -m unittest discover -s tests -t .
+node --test tests/ui-orcarouter.test.mjs
+```
+
+设置 `ORCAROUTER_API_KEY` 后，`tests/test_orcarouter_live.py` 会额外对 `https://api.orcarouter.ai/v1` 发起一次真实请求并核对实时模型目录；未设置时该文件自动跳过。界面证据不随仓库分发：`python tests/capture_gui_evidence.py` 会现场启动应用，用 Playwright 驱动真实界面，把截图、`manifest.json` 与 sha256 写入已被 `.gitignore` 忽略的 `orca-evidence/`。
 
 ## 指纹方法
 
@@ -56,6 +84,7 @@ P(模型家族) = Σ P(该家族中的具体模型)
 
 ```text
 app.py              Web 接口
+orcarouter.py       OrcaRouter 提供方：凭据、OAuth 2.0 + PKCE、模型目录
 fingerprint.py      指纹提取与归因
 bank_builder.py     指纹库构建与概率校准
 challenge_suite.py  自动建库挑战
@@ -64,6 +93,7 @@ rebuild_unified_bank.py  重建统一全局库
 data/               参考数据与指纹库
 static/             页面资源
 templates/          页面模板
+tests/              OrcaRouter 提供方与 Web 接口测试
 ```
 
 ## 指纹库说明

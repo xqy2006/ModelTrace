@@ -1,0 +1,61 @@
+/* OrcaRouter provider UI: model combobox, credential row and connect dialog.
+   NOTE: styles.css sets `label { display: flex }`, which beats the user-agent
+   `[hidden] { display: none }` rule, so every element toggled with the `hidden`
+   attribute needs an explicit rule here. */
+   Kept out of styles.css because that sheet is bundled into the Codex plugin
+   (codex-plugin/modeltrace-guard/web/modeltrace.css) and hashed into its
+   provenance; the OrcaRouter provider is web-app only. */
+/* OrcaRouter provider: model combobox, credential row and connect dialog */
+.form-field { display: flex; flex-direction: column; gap: 6px; color: #344054; font-size: 11px; font-weight: 650; }
+[data-provider-field][hidden], [data-model-field][hidden], .form-field[hidden] { display: none; }
+.orca-inline-credential { display: flex; align-items: center; gap: 10px; margin: 0 17px 4px; padding: 10px 12px; color: var(--muted); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 7px; font-size: 11px; }
+.orca-inline-credential[hidden] { display: none; }
+.orca-inline-credential strong { color: var(--text); font-size: 11px; font-variant-numeric: tabular-nums; }
+.orca-inline-credential .button { margin-left: auto; }
+
+.orca-select { position: relative; }
+.orca-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 38px; padding: 0 10px; color: var(--text); background: white; border: 1px solid var(--line-strong); border-radius: 7px; font-size: 12px; text-align: left; }
+.orca-select-trigger:hover { border-color: #84adff; }
+.orca-select-trigger span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orca-select-caret { color: var(--muted); font-size: 10px; }
+.orca-select-panel { position: absolute; z-index: 40; top: calc(100% + 4px); right: 0; width: min(420px, 90vw); padding: 10px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 9px; box-shadow: 0 12px 28px rgba(16,24,40,.14); }
+.orca-select-panel[hidden] { display: none; }
+.orca-select-search { height: 32px; margin-bottom: 8px; font-size: 12px; }
+.orca-select-status { margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 400; }
+.orca-select-status.degraded { color: var(--warning); }
+.orca-select-options { max-height: 250px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.orca-select-options li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 9px; border-radius: 6px; cursor: pointer; }
+.orca-select-options li:hover, .orca-select-options li[aria-selected="true"] { background: var(--primary-soft); }
+.orca-select-options li strong { font-size: 12px; }
+.orca-select-options li small { color: var(--muted); font-size: 10px; font-weight: 400; }
+.orca-select-options li em { grid-column: 1 / -1; color: var(--primary-dark); font-size: 10px; font-style: normal; }
+.orca-select-empty { color: var(--muted); font-size: 11px; cursor: default; }
+
+.orca-dialog { width: min(760px, 94vw); padding: 0; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--surface); color: var(--text); }
+.orca-dialog::backdrop { background: rgba(16,24,40,.45); }
+.orca-dialog-head { display: flex; align-items: center; gap: 12px; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+.orca-dialog-head h2 { margin: 0 0 3px; font-size: 15px; }
+.orca-dialog-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.orca-dialog-head > div { flex: 1; }
+.orca-logo { width: 34px; height: 34px; border-radius: 8px; background: var(--surface-soft); object-fit: contain; }
+.orca-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px 17px; }
+.orca-method { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); }
+.orca-method header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.orca-method h3 { margin: 0; font-size: 13px; }
+.orca-method p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.orca-method label { font-size: 11px; }
+.orca-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.orca-actions .button { width: auto; }
+.orca-note { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+#orca-connect-status { margin: 0 17px 12px; }
+#orca-connect-url, #orca-connect-code-row { display: flex; gap: 8px; align-items: flex-end; }
+#orca-connect-url[hidden], #orca-connect-code-row[hidden] { display: none; }
+#orca-connect-url label, #orca-connect-code-row label { flex: 1; }
+.orca-dialog > .orca-note { padding: 12px 17px; border-top: 1px solid var(--line); }
+.orca-dialog a { color: var(--primary-dark); }
+
+@media (max-width: 640px) {
+  .orca-methods { grid-template-columns: 1fr; }
+  .orca-inline-credential { flex-wrap: wrap; }
+  #orca-connect-url, #orca-connect-code-row { flex-direction: column; align-items: stretch; }
+}
