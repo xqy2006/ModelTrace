@@ -18,7 +18,7 @@ python start.py
 ## 使用
 
 - **手动测试**：复制三条挑战，分别发送给同一个待测模型，再粘贴每次完整输出。
-- **API 自动测试**：填写 Base URL、API Key 和模型名。程序会自动尝试 OpenAI Chat Completions 与 Anthropic Messages 格式，以三份有效回答为目标完成归因。
+- **API 自动测试**：填写 Base URL、API Key 和模型名。程序会自动尝试 OpenAI Chat Completions、OpenAI Responses 与 Anthropic Messages 格式，以三份有效回答为目标完成归因。
 - **指纹库管理**：可以新建指纹库，或通过 API 为现有指纹库添加模型指纹。
 
 API Key 只用于当前页面发起请求，不写入磁盘。
