@@ -3,4 +3,14 @@ __pycache__/
 *.pyc
 *.log
 .venv/
+.env
+.env.*
+!.env.example
 node_modules/
+.nuxt/
+.output/
+/dist/
+*.tsbuildinfo
+worker/wrangler.toml
+worker/.wrangler/
+.wrangler/

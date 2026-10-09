@@ -1,4 +1,4 @@
-name: Deploy static ModelTrace to GitHub Pages
+name: Deploy ModelTrace web to GitHub Pages
 
 on:
   push:
@@ -23,17 +23,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Assemble manual-only site
+      - name: Generate Nuxt SPA
+        working-directory: web
+        env:
+          NUXT_APP_BASE_URL: /ModelTrace/
+          NUXT_PUBLIC_PROXY_URL: https://llm-iq-proxy.hanmo5888.workers.dev/v1
         run: |
-          mkdir -p _site/data
-          cp static/index.html static/styles.css static/repository-link.css static/pages-app.js static/fingerprint-core.js static/challenge-browser.js static/.nojekyll _site/
-          cp data/unified_bank.json _site/data/unified_bank.json
-      - name: Upload static site
+          npm ci
+          npm run generate
+          touch .output/public/.nojekyll
+      - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: web/.output/public
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

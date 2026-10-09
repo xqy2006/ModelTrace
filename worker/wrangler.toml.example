@@ -1,0 +1,17 @@
+name = "modeltrace-relay"
+main = "src/index.mjs"
+compatibility_date = "2025-07-01"
+workers_dev = true
+
+[vars]
+# Must match the deployed web origin exactly (no trailing slash or path).
+SITE_ORIGIN = "https://xqy2006.github.io"
+# Upstream hosts are not configured here: the Worker accepts arbitrary public HTTPS
+# OpenAI-compatible endpoints ending in /v1, while rejecting IP literals/local names.
+
+# Mandatory per-IP rate limiting. Worker refuses requests when the binding is absent.
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
