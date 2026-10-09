@@ -45,7 +45,10 @@
           <form id="api-test-form" class="form-panel">
             <div class="form-grid two">
               <label><span>Base URL</span><input id="test-api-base" required placeholder="https://example.com/v1"></label>
-              <label><span>接口模型名</span><input id="test-api-model" required placeholder="模型名"></label>
+              <div class="field-with-button">
+                <label><span>接口模型名</span><input id="test-api-model" list="test-model-options" required placeholder="例如 gpt-4o-mini"></label>
+                <button type="button" id="fetch-test-models" class="button secondary">获取模型</button>
+              </div>
               <label><span>API Key</span><input id="test-api-key" type="password" required autocomplete="off"></label>
               <label><span>温度（可选）</span><input id="test-temperature" type="number" min="0" max="2" step="0.1" placeholder="接口默认"></label>
             </div>
@@ -85,7 +88,10 @@
           <div class="form-heading"><strong>新建指纹</strong></div>
           <div class="form-grid two">
             <label><span>Base URL</span><input id="api-base" required placeholder="https://example.com/v1"></label>
-            <label><span>接口模型名</span><input id="api-model" required placeholder="实际请求使用的模型名"></label>
+            <div class="field-with-button">
+              <label><span>接口模型名</span><input id="api-model" list="enroll-model-options" required placeholder="实际请求使用的模型名"></label>
+              <button type="button" id="fetch-enroll-models" class="button secondary">获取模型</button>
+            </div>
             <label><span>API Key</span><input id="api-key" type="password" required autocomplete="off"></label>
             <label><span>指纹名称</span><input id="auto-model" list="model-options" required placeholder="例如 model-version-name"></label>
             <label><span>采集回答数</span><input id="sample-count" type="number" min="3" max="36" value="36" required></label>
@@ -100,6 +106,8 @@
   </div>
 
   <datalist id="model-options">{% for model in bank.models %}<option value="{{ model.id }}">{% endfor %}</datalist>
+  <datalist id="test-model-options"></datalist>
+  <datalist id="enroll-model-options"></datalist>
   <script>window.BANK_SUMMARIES = {{ banks | tojson }}; window.UNIFIED_SUMMARY = {{ unified | tojson }}; window.DEFAULT_BANK_ID = {{ default_bank_id | tojson }};</script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

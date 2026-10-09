@@ -98,6 +98,8 @@ textarea:focus, input:focus, .form-grid select:focus { border-color: #84adff; bo
 .form-heading span { color: var(--muted); font-size: 11px; }
 .form-grid { display: grid; gap: 14px; padding: 17px; }
 .form-grid.two { grid-template-columns: 1fr 1fr; }
+.field-with-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.field-with-button .button { height: 38px; min-height: 38px; white-space: nowrap; }
 .form-grid.one-narrow { grid-template-columns: minmax(220px, .35fr) 1fr; }
 .form-grid .wide textarea { min-height: 235px; }
 label small { color: var(--muted); font-weight: 400; line-height: 1.45; }
@@ -173,6 +175,7 @@ tbody tr.winner { background: var(--primary-soft); }
   .nav-button { justify-content: center; }
   .nav-button > span:last-child, .sidebar-note { display: none; }
   .challenge-columns, .form-grid.two, .form-grid.one-narrow { grid-template-columns: 1fr; }
+  .field-with-button { grid-template-columns: 1fr; }
   .result-summary { grid-template-columns: 1fr 1fr; }
   .result-summary > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
   .result-summary > div:nth-child(4) { border-top: 1px solid var(--line); }

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 
-from enrollment import bank_summary, enroll_automatic, request_completion, test_automatic
+from enrollment import bank_summary, enroll_automatic, list_models, request_completion, test_automatic
 from fingerprint import analyze_global_outputs, generate_challenges, load_bank, parse_numbers
 from bank_builder import build_bank, read_rows
 
@@ -199,6 +199,15 @@ def automatic_test():
         return jsonify(result)
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
+
+
+@app.post("/api/models")
+def fetch_models():
+    payload = request.get_json()
+    try:
+        return jsonify({"models": list_models(payload["base_url"].strip(), payload["api_key"])})
+    except RuntimeError as error:
+        return jsonify({"error": str(error)}), 502
 
 
 @app.post("/api/test/probe")
