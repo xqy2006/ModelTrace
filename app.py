@@ -4,6 +4,7 @@ import json
 import math
 import re
 import secrets
+from functools import wraps
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -155,6 +156,32 @@ def replace_bank(bank_id: str) -> None:
     rebuild_global_bank()
 
 
+def require_local_client(view):
+    """Reject requests whose network origin is not localhost.
+
+    This is a network-origin check, not authentication or authorization: it
+    only inspects ``request.remote_addr`` and grants no identity or role. It
+    protects the endpoints that expose or mutate the fingerprint bank
+    catalog, which are not meant to be reachable by arbitrary network
+    clients; the app itself is only documented to be served on 127.0.0.1.
+
+    Known limitation: this check assumes the app is reached directly on its
+    loopback bind. It does not distinguish a genuine local client from a
+    same-host reverse proxy forwarding a remote request, since both appear
+    to originate from 127.0.0.1/::1. If remote deployment behind a proxy
+    ever becomes a supported use case, this needs real authentication
+    instead.
+    """
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if request.remote_addr not in ("127.0.0.1", "::1"):
+            return jsonify({"error": "forbidden"}), 403
+        return view(*args, **kwargs)
+
+    return wrapper
+
+
 @app.get("/")
 def index():
     summaries = {bank_id: summarized_bank(bank_id) for bank_id in BANK_CONFIGS}
@@ -229,6 +256,7 @@ def automatic_test_probe():
 
 
 @app.get("/api/bank")
+@require_local_client
 def get_bank():
     try:
         return jsonify(summarized_bank(requested_bank_id()))
@@ -237,11 +265,13 @@ def get_bank():
 
 
 @app.get("/api/banks")
+@require_local_client
 def get_banks():
     return jsonify({bank_id: summarized_bank(bank_id) for bank_id in BANK_CONFIGS})
 
 
 @app.post("/api/banks")
+@require_local_client
 def create_bank():
     payload = request.get_json()
     label = payload["label"].strip()
@@ -271,6 +301,7 @@ def create_bank():
 
 
 @app.post("/api/enroll/auto")
+@require_local_client
 def automatic_enrollment():
     payload = request.get_json()
     try:
