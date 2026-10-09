@@ -197,3 +197,28 @@ tbody tr.winner { background: var(--primary-soft); }
   .inventory-summary > div:nth-child(4) { border-top: 1px solid var(--line); }
   .button { width: 100%; }
 }
+
+.api-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+.api-cells { display: flex; flex-direction: column; gap: 12px; }
+.api-cell { padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel, #fff); }
+.api-cell-head { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.api-cell-head .cell-name { flex: 1; max-width: 280px; font-weight: 600; }
+.api-cell-head .cell-name.invalid { border-color: var(--danger); }
+.api-cell-head .cell-detail { margin-left: auto; }
+.cell-summary { display: flex; align-items: baseline; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cell-summary span { color: var(--muted); font-size: 11px; }
+.cell-summary strong { font-size: 16px; }
+.cell-summary em { font-style: normal; font-weight: 600; color: var(--primary-dark); }
+.api-add-cell { display: block; width: 100%; margin-top: 12px; padding: 22px 0; font-size: 32px; line-height: 1; color: var(--muted); background: transparent; border: 2px dashed var(--line); border-radius: 8px; cursor: pointer; }
+.api-add-cell:hover { color: var(--primary-dark); border-color: var(--primary-dark); }
+.modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(0,0,0,.4); }
+.modal[hidden] { display: none; }
+.modal-box { width: min(960px, 92vw); max-height: 88vh; overflow: auto; padding: 16px; border-radius: 10px; background: #fff; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+.cell-enable { display: flex; align-items: center; gap: 4px; font-size: 11px; white-space: nowrap; cursor: pointer; color: var(--muted); }
+.cell-enable input { width: 11px; height: 11px; margin: 0; flex: none; accent-color: var(--primary, #3b6fd4); cursor: pointer; }
+.key-wrap { display: flex; gap: 4px; }
+.key-wrap input { flex: 1; min-width: 0; }
+.key-eye { padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; cursor: pointer; opacity: .6; }
+.key-eye.on { opacity: 1; }

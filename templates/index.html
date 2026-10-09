@@ -42,20 +42,13 @@
         </section>
 
         <section id="test-api" class="mode-panel">
-          <form id="api-test-form" class="form-panel">
-            <div class="form-grid two">
-              <label><span>Base URL</span><input id="test-api-base" required placeholder="https://example.com/v1"></label>
-              <label><span>接口模型名</span><input id="test-api-model" required placeholder="模型名"></label>
-              <label><span>API Key</span><input id="test-api-key" type="password" required autocomplete="off"></label>
-              <label><span>温度（可选）</span><input id="test-temperature" type="number" min="0" max="2" step="0.1" placeholder="接口默认"></label>
-            </div>
-            <div class="form-footer"><button class="button primary" type="submit">开始测试</button></div>
-          </form>
-          <section id="api-test-progress" class="progress-panel" hidden aria-live="polite">
-            <div class="progress-heading"><strong id="api-progress-status">准备测试</strong><span id="api-progress-count">有效 0/3 · 已尝试 0/6</span></div>
-            <div class="progress-track"><i id="api-progress-fill"></i></div>
-            <div id="api-progress-steps" class="progress-steps"></div>
-          </section>
+          <div class="api-toolbar">
+            <button id="api-start" class="button primary" type="button">开始测试</button>
+            <button id="api-cache-save" class="button secondary" type="button">缓存前端</button>
+            <button id="api-cache-clear" class="button secondary" type="button">清理缓存</button>
+          </div>
+          <div id="api-cells" class="api-cells"></div>
+          <button id="api-add-cell" class="api-add-cell" type="button" aria-label="添加测试单元">+</button>
         </section>
 
         <div id="test-message" class="message" hidden></div>
@@ -97,6 +90,10 @@
         <div id="enrollment-message" class="message" hidden></div>
       </section>
     </main>
+  </div>
+
+  <div id="api-detail-modal" class="modal" hidden>
+    <div class="modal-box"><div class="modal-head"><strong id="api-detail-title"></strong><button id="api-detail-close" class="button secondary" type="button">关闭</button></div><div id="api-detail-body"></div></div>
   </div>
 
   <datalist id="model-options">{% for model in bank.models %}<option value="{{ model.id }}">{% endfor %}</datalist>
