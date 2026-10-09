@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,7 +8,7 @@ import {
   DEFAULTS, classifySample, dataDirectory, isDue, issue, newState, readState, schedule,
   recentComparable, sessionPath, setTurn, validateConfig, validateNumbers, withState,
 } from '../scripts/state.mjs';
-import { ROOT, challengeContext, handleHook, loadArtifacts, summarize } from '../scripts/guard.mjs';
+import { ROOT, challengeContext, handleHook, isDirectCall, loadArtifacts, summarize } from '../scripts/guard.mjs';
 import { run } from './fixture-runner.mjs';
 import { LANGUAGES, localizedPrompt, forkPrompt } from '../scripts/prompts.mjs';
 
@@ -444,3 +444,54 @@ test('hook launcher reports malformed input without preventing actual work', asy
   assert.equal(result.status, 0);
   assert.ok(JSON.parse(result.stdout).systemMessage.includes('coverage is incomplete'));
 });
+
+test('isDirectCall correctly identifies direct invocations across symlinks', async (t) => {
+  const dir = await fixture(t);
+  const guardScript = path.join(ROOT, 'scripts', 'guard.mjs');
+  const symlinkScript = path.join(dir, 'symlink-guard.mjs');
+  const symlinkChain = path.join(dir, 'symlink-chain.mjs');
+  try {
+    await symlink(guardScript, symlinkScript);
+    await symlink(symlinkScript, symlinkChain);
+  } catch (err) {
+    if (process.platform === 'win32' && err.code === 'EPERM') return;
+    throw err;
+  }
+
+  const guardUrl = new URL('../scripts/guard.mjs', import.meta.url);
+  assert.equal(isDirectCall(guardUrl.href, null), false);
+  assert.equal(isDirectCall(null, guardScript), false);
+  assert.equal(isDirectCall(undefined, guardScript), false);
+  assert.equal(isDirectCall(guardUrl.href, guardScript), true);
+  assert.equal(isDirectCall(guardUrl, symlinkScript), true);
+  assert.equal(isDirectCall(guardScript, symlinkScript), true);
+  assert.equal(isDirectCall(guardUrl.href, symlinkChain), true);
+  assert.equal(isDirectCall(guardUrl.href, path.join(dir, 'nonexistent.mjs')), false);
+});
+
+test('CLI invocations via symlinked script execute properly', async (t) => {
+  const dir = await fixture(t);
+  const guardScript = path.join(ROOT, 'scripts', 'guard.mjs');
+  const symlinkScript = path.join(dir, 'symlink-guard.mjs');
+  const symlinkChain = path.join(dir, 'symlink-chain.mjs');
+  try {
+    await symlink(guardScript, symlinkScript);
+    await symlink(symlinkScript, symlinkChain);
+  } catch (err) {
+    if (process.platform === 'win32' && err.code === 'EPERM') return;
+    throw err;
+  }
+
+  const directResult = spawnSync(process.execPath, [symlinkScript, 'doctor'], { encoding: 'utf8', timeout: 10000 });
+  assert.equal(directResult.status, 0, directResult.stderr);
+  assert.equal(JSON.parse(directResult.stdout).assetsVerified, true);
+
+  const chainResult = spawnSync(process.execPath, [symlinkChain, 'doctor'], { encoding: 'utf8', timeout: 10000 });
+  assert.equal(chainResult.status, 0, chainResult.stderr);
+  assert.equal(JSON.parse(chainResult.stdout).assetsVerified, true);
+
+  const preserveResult = spawnSync(process.execPath, ['--preserve-symlinks', symlinkScript, 'doctor'], { encoding: 'utf8', timeout: 10000 });
+  assert.equal(preserveResult.status, 0, preserveResult.stderr);
+  assert.equal(JSON.parse(preserveResult.stdout).assetsVerified, true);
+});
+
