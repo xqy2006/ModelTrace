@@ -11,6 +11,36 @@ python start.py
 
 页面地址为 `http://127.0.0.1:7860/`。
 
+## 终端 CLI
+
+CLI 的归因计算与 API 调用仅使用 Python 标准库；Codex 模式需要本机安装 `codex`。
+
+```bash
+# Codex 模式，默认串行，三份有效回答，单次请求最长 180 秒
+python3 modeltrace_cli.py -m claude-opus-5-5 --timeout 180
+
+# 纯 Python API 模式；key 推荐通过环境变量传入
+export MODELTRACE_BASE_URL='https://your-api.example/v1'
+export MODELTRACE_API_KEY='your-key'
+python3 modeltrace_cli.py --backend api --api-format responses -m claude-opus-5-5 --json
+
+# URL / key 也可使用 --base-url / --api-key（别名 --url / --key）
+# Codex 和 API 均可追加 --parallel 3 开启三路并行，默认同时请求数为 1
+# --api-format 支持 chat、responses、anthropic，默认 chat
+python3 modeltrace_cli.py --backend api --api-format chat -m your-model --save-outputs outputs.jsonl
+
+# 指定远端库时，每次从此 URL 下载，不采用旧的本地缓存
+python3 modeltrace_cli.py -m your-model --bank-url https://raw.githubusercontent.com/xqy2006/ModelTrace/main/data/unified_bank.json
+```
+
+默认每次运行均下载官方远端指纹库，不优先采用 checkout 或旧缓存。`--bank-file` 可指定离线库，与 `--bank-url` 互斥。远端库按 URL 分别缓存，显式 URL 下载失败会报错，不会静默回退到旧库。
+
+Codex 在临时目录中运行，以 `--json` 审计全部事件；发现工具调用、未知项目、损坏事件或不完整结束时拒绝该回答，超时后终止进程树。审计能发现已发生的工具调用，不等于从根本上禁用 Codex 工具。API 模式不提供或执行工具，拒绝返回工具调用或截断回答；禁止 HTTP 重定向以避免转发凭据。`--json` 的 stdout 仅包含结果 JSON，进度和性能表写入 stderr。
+
+`-n` 是最大尝试次数，`--target` 是目标有效回答数，`-c` 控制并发；如果 `-n` 小于目标则提升到目标次数。`--save-outputs` 保存逐轮原始回答与性能，不保存 API key；未达到目标时报告实际有效数量。上游缺少输出 token usage 时明确显示 TPS 不可用；部分回答缺少 usage 时，仅使用有有效 usage 的回答及其耗时计算单请求 TPS，吞吐为已知 token 吞吐，不估算 token。闭集归因不能证明服务端真实模型身份，也无法观察服务端未披露的工具使用。
+
+CLI 回归测试：`python3 -m unittest -v test_modeltrace_cli`（评分一致性测试需要 requirements 中的 NumPy）。
+
 ## GitHub Pages
 
 `static/index.html` 是不依赖后端的手动测试版本，归因计算和指纹库读取都在浏览器本地完成。仓库附带的 GitHub Actions 会将 `static/` 部署到 GitHub Pages。
