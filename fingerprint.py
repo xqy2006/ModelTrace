@@ -17,6 +17,10 @@ ALPHA = 0.5
 ORDERED_BLOCK_WEIGHT = 0.25
 DEFAULT_BANK = Path(__file__).with_name("data") / "gpt_bank.json"
 FAMILY_DISPLAY_NAMES = {"gpt": "GPT", "claude": "Claude"}
+AMBIGUOUS_MARGIN = 0.08
+CLOSE_MARGIN = 0.25
+AMBIGUOUS_TOP = 0.45
+CLOSE_TOP = 0.70
 
 
 def parse_numbers(text: str) -> list[int]:
@@ -138,6 +142,110 @@ def softmax(values: list[float]) -> list[float]:
     return [weight / total for weight in weights]
 
 
+def closeness_report(
+    ranked: list[dict],
+    *,
+    id_key: str,
+    name_key: str,
+    family_key: str | None = None,
+    probability_key: str = "probability",
+    ambiguous_margin: float = AMBIGUOUS_MARGIN,
+    close_margin: float = CLOSE_MARGIN,
+    ambiguous_top: float = AMBIGUOUS_TOP,
+    close_top: float = CLOSE_TOP,
+) -> dict:
+    if not ranked:
+        raise ValueError("没有可比较的候选")
+    top = ranked[0]
+    runner = ranked[1] if len(ranked) > 1 else None
+    top_probability = float(top[probability_key])
+    runner_probability = float(runner[probability_key]) if runner is not None else 0.0
+    margin = top_probability - runner_probability
+    if margin < ambiguous_margin or top_probability < ambiguous_top:
+        verdict = "ambiguous"
+    elif margin < close_margin or top_probability < close_top:
+        verdict = "close"
+    else:
+        verdict = "decisive"
+    floor = top_probability - ambiguous_margin
+    contenders = []
+    for item in ranked:
+        if float(item[probability_key]) + 1e-15 < floor:
+            continue
+        entry = {
+            "id": item[id_key],
+            "display_name": item[name_key],
+            "probability": float(item[probability_key]),
+        }
+        if family_key:
+            entry["family"] = item.get(family_key)
+            if "family_name" in item:
+                entry["family_name"] = item.get("family_name")
+        contenders.append(entry)
+    return {
+        "verdict": verdict,
+        "margin": margin,
+        "runner_up": runner[id_key] if runner is not None else None,
+        "runner_up_name": runner[name_key] if runner is not None else None,
+        "runner_up_probability": runner_probability if runner is not None else None,
+        "contenders": contenders,
+        "same_family_top_two": bool(
+            family_key
+            and runner is not None
+            and top.get(family_key)
+            and top.get(family_key) == runner.get(family_key)
+        ),
+        "thresholds": {
+            "ambiguous_margin": ambiguous_margin,
+            "close_margin": close_margin,
+            "ambiguous_top": ambiguous_top,
+            "close_top": close_top,
+        },
+    }
+
+
+def apply_model_closeness(result: dict, family_key: str | None = None) -> dict:
+    decision = closeness_report(
+        result["results"],
+        id_key="model",
+        name_key="display_name",
+        family_key=family_key,
+    )
+    result.update(
+        {
+            "verdict": decision["verdict"],
+            "margin": decision["margin"],
+            "runner_up": decision["runner_up"],
+            "runner_up_name": decision["runner_up_name"],
+            "runner_up_probability": decision["runner_up_probability"],
+            "contenders": decision["contenders"],
+            "same_family_top_two": decision["same_family_top_two"],
+            "closeness_thresholds": decision["thresholds"],
+        }
+    )
+    return result
+
+
+def apply_family_closeness(result: dict) -> dict:
+    ranked = sorted(
+        result["family_probabilities"],
+        key=lambda item: item["probability"],
+        reverse=True,
+    )
+    decision = closeness_report(ranked, id_key="family", name_key="display_name")
+    result.update(
+        {
+            "family_verdict": decision["verdict"],
+            "family_margin": decision["margin"],
+            "family_runner_up": decision["runner_up"],
+            "family_runner_up_name": decision["runner_up_name"],
+            "family_runner_up_probability": decision["runner_up_probability"],
+            "family_contenders": decision["contenders"],
+        }
+    )
+    return result
+
+
 def js_similarity(left: list[int], right: list[int]) -> float:
     left_total = sum(left)
     right_total = sum(right) + ALPHA * DIMENSION
@@ -194,21 +302,25 @@ def analyze_global_outputs(outputs: list[dict], bank: dict) -> dict:
             item["probability"] / family_probabilities[family_id]
         )
     winning_family = max(family_order, key=family_probabilities.get)
-    return {
-        **result,
-        "family_prediction": winning_family,
-        "family_prediction_name": family_names[winning_family],
-        "family_probability": family_probabilities[winning_family],
-        "family_probabilities": [
-            {
-                "family": family_id,
-                "display_name": family_names[family_id],
-                "probability": family_probabilities[family_id],
-            }
-            for family_id in family_order
-        ],
-        "method": "统一全局稳健数字指纹",
-    }
+    result.update(
+        {
+            "family_prediction": winning_family,
+            "family_prediction_name": family_names[winning_family],
+            "family_probability": family_probabilities[winning_family],
+            "family_probabilities": [
+                {
+                    "family": family_id,
+                    "display_name": family_names[family_id],
+                    "probability": family_probabilities[family_id],
+                }
+                for family_id in family_order
+            ],
+            "method": "统一全局稳健数字指纹",
+        }
+    )
+    apply_model_closeness(result, family_key="family")
+    apply_family_closeness(result)
+    return result
 
 
 def analyze_outputs(outputs: list[dict], bank: dict) -> dict:
@@ -262,7 +374,7 @@ def analyze_outputs(outputs: list[dict], bank: dict) -> dict:
         for index, model_id in enumerate(model_ids)
     ]
     results.sort(key=lambda item: item["probability"], reverse=True)
-    return {
+    result = {
         "prediction": results[0]["model"],
         "prediction_name": results[0]["display_name"],
         "probability": results[0]["probability"],
@@ -276,6 +388,7 @@ def analyze_outputs(outputs: list[dict], bank: dict) -> dict:
         },
         "method": bank.get("method", {}).get("name", "Ordered-block + nuisance-Hellinger"),
     }
+    return apply_model_closeness(result)
 
 
 def generate_challenges(count: int = 3) -> list[dict]:

@@ -3,6 +3,10 @@ export const VALUE_MAX = 355;
 export const DIMENSION = VALUE_MAX - VALUE_MIN + 1;
 export const ALPHA = 0.5;
 export const ORDERED_BLOCK_WEIGHT = 0.25;
+export const AMBIGUOUS_MARGIN = 0.08;
+export const CLOSE_MARGIN = 0.25;
+export const AMBIGUOUS_TOP = 0.45;
+export const CLOSE_TOP = 0.70;
 
 export function parseNumbers(text) {
   const runs = [];
@@ -155,6 +159,51 @@ function jsSimilarity(left, right) {
   return 1 - Math.sqrt(js / Math.log(2));
 }
 
+export function closenessReport(ranked, {
+  idKey,
+  nameKey,
+  familyKey = null,
+  probabilityKey = "probability",
+  ambiguousMargin = AMBIGUOUS_MARGIN,
+  closeMargin = CLOSE_MARGIN,
+  ambiguousTop = AMBIGUOUS_TOP,
+  closeTop = CLOSE_TOP,
+} = {}) {
+  if (!ranked.length) throw new Error("没有可比较的候选");
+  const top = ranked[0];
+  const runner = ranked[1] || null;
+  const topProbability = Number(top[probabilityKey]);
+  const runnerProbability = runner ? Number(runner[probabilityKey]) : 0;
+  const margin = topProbability - runnerProbability;
+  let verdict = "decisive";
+  if (margin < ambiguousMargin || topProbability < ambiguousTop) verdict = "ambiguous";
+  else if (margin < closeMargin || topProbability < closeTop) verdict = "close";
+  const floor = topProbability - ambiguousMargin;
+  const contenders = ranked.filter((item) => Number(item[probabilityKey]) + 1e-15 >= floor).map((item) => {
+    const entry = { id: item[idKey], display_name: item[nameKey], probability: Number(item[probabilityKey]) };
+    if (familyKey) {
+      entry.family = item[familyKey];
+      if ("family_name" in item) entry.family_name = item.family_name;
+    }
+    return entry;
+  });
+  return {
+    verdict,
+    margin,
+    runner_up: runner ? runner[idKey] : null,
+    runner_up_name: runner ? runner[nameKey] : null,
+    runner_up_probability: runner ? runnerProbability : null,
+    contenders,
+    same_family_top_two: Boolean(familyKey && runner && top[familyKey] && top[familyKey] === runner[familyKey]),
+    thresholds: {
+      ambiguous_margin: ambiguousMargin,
+      close_margin: closeMargin,
+      ambiguous_top: ambiguousTop,
+      close_top: closeTop,
+    },
+  };
+}
+
 export function analyzeGlobalOutputs(outputs, bank) {
   const modelIds = bank.models.map((model) => model.id);
   const valid = [];
@@ -195,6 +244,11 @@ export function analyzeGlobalOutputs(outputs, bank) {
   ]));
   results.forEach((item) => { item.conditional_probability = item.probability / familyProbabilities[item.family]; });
   const winningFamily = familyOrder.reduce((best, family) => familyProbabilities[family] > familyProbabilities[best] ? family : best);
+  const familyRanked = familyOrder
+    .map((family) => ({ family, display_name: familyNames[family], probability: familyProbabilities[family] }))
+    .sort((left, right) => right.probability - left.probability);
+  const modelDecision = closenessReport(results, { idKey: "model", nameKey: "display_name", familyKey: "family" });
+  const familyDecision = closenessReport(familyRanked, { idKey: "family", nameKey: "display_name" });
   return {
     prediction: results[0].model,
     prediction_name: results[0].display_name,
@@ -208,5 +262,19 @@ export function analyzeGlobalOutputs(outputs, bank) {
     family_probability: familyProbabilities[winningFamily],
     family_probabilities: familyOrder.map((family) => ({ family, display_name: familyNames[family], probability: familyProbabilities[family] })),
     method: "统一全局稳健数字指纹",
+    verdict: modelDecision.verdict,
+    margin: modelDecision.margin,
+    runner_up: modelDecision.runner_up,
+    runner_up_name: modelDecision.runner_up_name,
+    runner_up_probability: modelDecision.runner_up_probability,
+    contenders: modelDecision.contenders,
+    same_family_top_two: modelDecision.same_family_top_two,
+    closeness_thresholds: modelDecision.thresholds,
+    family_verdict: familyDecision.verdict,
+    family_margin: familyDecision.margin,
+    family_runner_up: familyDecision.runner_up,
+    family_runner_up_name: familyDecision.runner_up_name,
+    family_runner_up_probability: familyDecision.runner_up_probability,
+    family_contenders: familyDecision.contenders,
   };
 }

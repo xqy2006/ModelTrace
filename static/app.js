@@ -17,6 +17,27 @@ function percent(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+const VERDICT_LABELS = { decisive: "明确领先", close: "候选接近", ambiguous: "不宜单独点名" };
+
+function verdictNote(payload) {
+  if (payload.verdict === "ambiguous") {
+    const names = (payload.contenders || []).map((item) => item.display_name).join("、");
+    return `首位与次位相差 ${percent(payload.margin)}。接近候选：${names || payload.prediction_name}。`;
+  }
+  if (payload.verdict === "close") {
+    const runner = payload.runner_up_name ? `次位 ${payload.runner_up_name} ${percent(payload.runner_up_probability)}。` : "";
+    return `领先幅度 ${percent(payload.margin)}，尚未拉开。${runner}`;
+  }
+  return `领先幅度 ${percent(payload.margin)}。`;
+}
+
+function headlineModel(payload) {
+  if (payload.verdict === "ambiguous") {
+    return (payload.contenders || []).slice(0, 3).map((item) => item.display_name).join(" / ") || payload.prediction_name;
+  }
+  return payload.prediction_name;
+}
+
 function optionalNumber(id) {
   const value = byId(id).value.trim();
   return value === "" ? null : Number(value);
@@ -78,7 +99,7 @@ function renderResult(payload) {
     <span class="diagnostic ${item.accepted ? "accepted" : "rejected"}">挑战 ${index + 1}: ${item.parsed_numbers} 个数字 · ${item.accepted ? "计入" : "忽略"}</span>
   `).join("");
   const rows = payload.results.map((item, index) => `
-    <tr class="${index === 0 ? "winner" : ""}">
+    <tr class="${index === 0 ? "winner" : index === 1 && payload.verdict !== "decisive" ? "runner-up" : ""}">
       <td>${index + 1}</td><td><strong>${escapeHtml(item.display_name)}</strong></td><td>${escapeHtml(item.family_name)}</td>
       <td><div class="probability-cell"><span><i style="width:${item.probability * 100}%"></i></span><strong>${percent(item.probability)}</strong></div></td>
       <td>${percent(item.profile_similarity)}</td>
@@ -87,9 +108,16 @@ function renderResult(payload) {
   const apiNote = payload.api_test
     ? `<span>API 获得 ${payload.api_test.received}/${payload.api_test.requested} 份有效回答，实际尝试 ${payload.api_test.attempted}/${payload.api_test.max_attempts}${payload.api_test.errors.length ? `，${payload.api_test.errors.length} 次未采用` : ""}</span>`
     : "";
+  const familyNote = payload.family_verdict && payload.family_verdict !== "decisive"
+    ? `家族判定为「${VERDICT_LABELS[payload.family_verdict]}」，与 ${escapeHtml(payload.family_runner_up_name || "其他家族")} 相差 ${percent(payload.family_margin)}。`
+    : "";
   byId("result").innerHTML = `
+    <div class="result-verdict ${escapeHtml(payload.verdict || "decisive")}" role="status">
+      <strong>${VERDICT_LABELS[payload.verdict] || VERDICT_LABELS.decisive}</strong>
+      <span>${escapeHtml(verdictNote(payload))}${payload.same_family_top_two ? " 前两名同属一个模型家族。" : ""}${familyNote ? ` ${familyNote}` : ""}</span>
+    </div>
     <div class="result-summary">
-      <div><span>最可能模型</span><strong>${escapeHtml(payload.prediction_name)}</strong></div>
+      <div><span>${payload.verdict === "ambiguous" ? "接近候选" : "最可能模型"}</span><strong>${escapeHtml(headlineModel(payload))}</strong></div>
       <div><span>统一库概率</span><strong>${percent(payload.probability)}</strong></div>
       <div><span>自动识别家族</span><strong>${escapeHtml(payload.family_prediction_name)} · ${percent(payload.family_probability)}</strong></div>
       <div><span>有效查询</span><strong>${payload.used_outputs}/3</strong></div>
@@ -99,6 +127,7 @@ function renderResult(payload) {
     ${apiNote ? `<div class="result-note">${apiNote}</div>` : ""}
     <div class="result-guidance" role="note" aria-label="结果说明">
       <p>本工具仅对指纹库内的模型进行归因；若待测模型不在指纹库中，得到任何结果都有可能。</p>
+      <p>当首位与次位差距较小，或首位概率不高时，页面会标成「候选接近」或「不宜单独点名」，并同时列出接近的候选，而不是只强调一个模型名。</p>
       <p>Claude Code 的系统提示词会影响模型偏好，测试结果存在较大偏差，建议不要在 Claude Code 中测试。</p>
     </div>
   `;
