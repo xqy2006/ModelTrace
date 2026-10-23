@@ -169,7 +169,17 @@ def index():
 
 @app.get("/api/challenges")
 def challenges():
-    return jsonify({"challenges": generate_challenges(3)})
+    try:
+        style = request.args.get("style") or "standard"
+        language = request.args.get("language") or "zh"
+        challenges = generate_challenges(3, style=style, language=language)
+        return jsonify({
+            "challenges": challenges,
+            "style": challenges[0]["style"] if challenges else style,
+            "language": challenges[0]["language"] if challenges else language,
+        })
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
 
 
 @app.post("/api/analyze")

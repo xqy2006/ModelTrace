@@ -64,6 +64,11 @@ button:disabled { cursor: wait; opacity: .6; }
 .mode-panel { display: none; }
 .mode-panel.active { display: block; }
 
+.challenge-options { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; margin-bottom: 14px; padding: 12px 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+.challenge-options label { min-width: 160px; }
+.challenge-options select { height: 38px; padding: 0 10px; color: var(--text); border: 1px solid var(--line-strong); border-radius: 7px; background: white; outline: none; }
+.challenge-options select:focus { border-color: #84adff; box-shadow: 0 0 0 3px rgba(37,99,235,.10); }
+.challenge-options p { flex: 1 1 220px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; font-weight: 400; }
 .panel-toolbar, .action-row, .form-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .panel-toolbar { padding: 13px 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px 9px 0 0; }
 .panel-toolbar > div { display: flex; align-items: baseline; gap: 10px; }
@@ -187,7 +192,7 @@ tbody tr.winner { background: var(--primary-soft); }
   .nav-button { justify-content: flex-start; }
   .nav-button > span:last-child { display: flex; }
   .main-content { padding: 20px 12px 40px; }
-  .page-header, .panel-toolbar, .action-row, .form-footer, .result-note { align-items: stretch; flex-direction: column; }
+  .page-header, .panel-toolbar, .action-row, .form-footer, .result-note, .challenge-options { align-items: stretch; flex-direction: column; }
   .library-actions { align-items: stretch; flex-direction: column; }
   .privacy-badge { align-self: flex-start; }
   .mode-tabs { display: flex; }

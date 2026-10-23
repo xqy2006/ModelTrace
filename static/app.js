@@ -40,12 +40,26 @@ function activateMode(group, name) {
   });
 }
 
+function challengeQuery() {
+  const params = new URLSearchParams({
+    style: byId("challenge-style").value,
+    language: byId("challenge-language").value,
+  });
+  return `/api/challenges?${params}`;
+}
+
 async function loadChallenges() {
   byId("regenerate").disabled = true;
   byId("result").hidden = true;
   setMessage(byId("test-message"), "");
-  const response = await fetch("/api/challenges");
-  state.challenges = (await response.json()).challenges;
+  const response = await fetch(challengeQuery());
+  const payload = await response.json();
+  if (!response.ok) {
+    setMessage(byId("test-message"), payload.error || "无法生成挑战。", "error");
+    byId("regenerate").disabled = false;
+    return;
+  }
+  state.challenges = payload.challenges;
   renderChallenges();
   byId("regenerate").disabled = false;
 }
@@ -147,10 +161,22 @@ async function testViaApi(event) {
   byId("result").hidden = true;
   setMessage(byId("test-message"), "");
 
-  const challengeResponse = await fetch("/api/challenges");
-  const firstBatch = (await challengeResponse.json()).challenges;
-  const retryResponse = await fetch("/api/challenges");
-  const challenges = firstBatch.concat((await retryResponse.json()).challenges);
+  const challengeResponse = await fetch(challengeQuery());
+  const firstPayload = await challengeResponse.json();
+  if (!challengeResponse.ok) {
+    setMessage(byId("test-message"), firstPayload.error || "无法生成挑战。", "error");
+    button.disabled = false;
+    return;
+  }
+  const firstBatch = firstPayload.challenges;
+  const retryResponse = await fetch(challengeQuery());
+  const retryPayload = await retryResponse.json();
+  if (!retryResponse.ok) {
+    setMessage(byId("test-message"), retryPayload.error || "无法生成挑战。", "error");
+    button.disabled = false;
+    return;
+  }
+  const challenges = firstBatch.concat(retryPayload.challenges);
   const states = challenges.map(() => "pending");
   const outputs = [];
   const errors = [];
@@ -328,6 +354,8 @@ document.querySelectorAll("[data-workspace]").forEach((button) => button.addEven
 document.querySelectorAll("[data-test-mode]").forEach((button) => button.addEventListener("click", () => activateMode("test", button.dataset.testMode)));
 byId("bank-select").addEventListener("change", (event) => selectBank(event.target.value));
 byId("regenerate").addEventListener("click", loadChallenges);
+byId("challenge-style").addEventListener("change", loadChallenges);
+byId("challenge-language").addEventListener("change", loadChallenges);
 byId("analyze").addEventListener("click", analyzeManual);
 byId("api-test-form").addEventListener("submit", testViaApi);
 byId("auto-enrollment").addEventListener("submit", enrollAutomatically);

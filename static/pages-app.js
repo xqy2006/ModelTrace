@@ -57,9 +57,16 @@ function renderChallenges() {
 }
 
 function regenerate() {
-  state.challenges = generateChallenges(3);
-  setMessage("");
-  renderChallenges();
+  try {
+    state.challenges = generateChallenges(3, {
+      style: byId("challenge-style").value,
+      language: byId("challenge-language").value,
+    });
+    setMessage("");
+    renderChallenges();
+  } catch (error) {
+    setMessage(error.message || "无法生成挑战。", "error");
+  }
 }
 
 function renderResult(payload) {
@@ -131,5 +138,7 @@ async function initialize() {
 }
 
 byId("regenerate").addEventListener("click", regenerate);
+byId("challenge-style").addEventListener("change", regenerate);
+byId("challenge-language").addEventListener("change", regenerate);
 byId("analyze").addEventListener("click", analyze);
 initialize();

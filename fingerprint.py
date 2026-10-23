@@ -278,9 +278,68 @@ def analyze_outputs(outputs: list[dict], bank: dict) -> dict:
     }
 
 
-def generate_challenges(count: int = 3) -> list[dict]:
-    rng = random.SystemRandom()
-    lengths = rng.sample(range(292, 333), count)
+CHALLENGE_STYLES = ("standard", "compact")
+CHALLENGE_LANGUAGES = ("zh", "en")
+
+
+def normalize_challenge_options(style: str | None = None, language: str | None = None) -> tuple[str, str]:
+    resolved_style = (style or "standard").strip().lower()
+    resolved_language = (language or "zh").strip().lower()
+    if resolved_style not in CHALLENGE_STYLES:
+        raise ValueError(f"未知提示词风格：{style}")
+    if resolved_language not in CHALLENGE_LANGUAGES:
+        raise ValueError(f"未知提示词语言：{language}")
+    return resolved_style, resolved_language
+
+
+def format_challenge_prompt(length: int, style: str, language: str, rng: random.Random) -> str:
+    if style == "compact" and language == "zh":
+        return (
+            f"随机生成 {length} 个 1 到 355 的整数，不使用外部工具。"
+            "每个位置单独选择，不要排序或按规律填写。"
+            f"写满 {length} 个整数后立即停止，不要继续输出。"
+        )
+    if style == "compact" and language == "en":
+        return (
+            f"Randomly choose {length} integers from 1 to 355. Do not use external tools. "
+            "Choose each position separately; do not sort or follow a pattern. "
+            f"Stop immediately after {length} integers."
+        )
+    if language == "en":
+        openings = [
+            "This is an independent numerical-choice record",
+            "Complete the following non-semantic integer selection task",
+            "Make a first-instinct value record",
+            "Generate a set of integers that carry no extra meaning",
+            "Run one quick per-item selection pass",
+        ]
+        actions = [
+            "For each position, make a first-instinct choice of",
+            "Choose item by item",
+            "Decide only the current item each time, giving",
+            "Give first-instinct values for",
+            "Directly choose",
+        ]
+        endings = [
+            "Repeats are allowed; once an item is written, do not sort, deduplicate, or replace it.",
+            "Accidental repeats are valid; do not rearrange or correct items already written.",
+            "The same value may appear again; do not tidy or rewrite earlier items while writing.",
+            "Do not drop repeats; do not filter, reorder, or force a pattern.",
+            "Do not assign meaning to the numbers; leave written values unchanged.",
+        ]
+        separators = [
+            "Comma or space separators are both fine.",
+            "Use one consistent, ordinary separator.",
+            "Commas, spaces, or newlines are all acceptable.",
+            "Any format is fine as long as each integer boundary is clear.",
+        ]
+        return (
+            f"{rng.choice(openings)}. {rng.choice(actions)} {length} integers from 1 to 355 inclusive. "
+            "Choose every position separately; do not count up or down from 1, and do not use an arithmetic progression, cycle, repeated block, or another rule-made pattern. "
+            "The current language model must complete this directly: do not call or rely on any tool, including Python, a code interpreter, a calculator, search, an API, or an external random-number generator; do not write or run code first. "
+            f"{rng.choice(endings)} {rng.choice(separators)} "
+            "Start with the first value. Do not repeat the count, range, or task instructions before the sequence."
+        )
     openings = [
         "这是一次独立的数值选择记录",
         "请完成下面的无语义整数选择任务",
@@ -308,22 +367,33 @@ def generate_challenges(count: int = 3) -> list[dict]:
         "可以用逗号、空格或换行分隔。",
         "只要每个整数边界清楚，格式可自行选择。",
     ]
+    return (
+        f"{rng.choice(openings)}。{rng.choice(actions)} {length} 个 1 到 355（含端点）的整数。"
+        "每个位置都要单独选择；不要从 1 开始计数，不要连续递增或递减，也不要采用等差、循环、重复区块或其他规则化模式。"
+        "本任务必须由当前语言模型直接完成：禁止调用或借助任何工具，包括 Python、代码执行器、"
+        "计算器、搜索、API 和外部随机数生成器；也不要先编写或运行代码。"
+        f"{rng.choice(endings)}{rng.choice(separator_hints)}"
+        "直接从第一个取值开始输出，不要在序列前重复数量、范围或任务说明。"
+    )
+
+
+def generate_challenges(
+    count: int = 3,
+    style: str | None = None,
+    language: str | None = None,
+) -> list[dict]:
+    style, language = normalize_challenge_options(style, language)
+    rng = random.SystemRandom()
+    lengths = rng.sample(range(292, 333), count)
     challenges = []
     for index, length in enumerate(lengths):
-        prompt = (
-            f"{rng.choice(openings)}。{rng.choice(actions)} {length} 个 1 到 355（含端点）的整数。"
-            "每个位置都要单独选择；不要从 1 开始计数，不要连续递增或递减，也不要采用等差、循环、重复区块或其他规则化模式。"
-            "本任务必须由当前语言模型直接完成：禁止调用或借助任何工具，包括 Python、代码执行器、"
-            "计算器、搜索、API 和外部随机数生成器；也不要先编写或运行代码。"
-            f"{rng.choice(endings)}{rng.choice(separator_hints)}"
-            "直接从第一个取值开始输出，不要在序列前重复数量、范围或任务说明。"
-        )
-        challenge_id = secrets.token_hex(7)
         challenges.append(
             {
-                "id": f"probe-{index + 1}-{challenge_id}",
+                "id": f"probe-{index + 1}-{secrets.token_hex(7)}",
                 "expected_count": length,
-                "prompt": prompt,
+                "prompt": format_challenge_prompt(length, style, language, rng),
+                "style": style,
+                "language": language,
             }
         )
     return challenges

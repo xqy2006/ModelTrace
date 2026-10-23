@@ -27,6 +27,21 @@
       </div>
 
       <section id="test-manual" class="mode-panel active">
+        <div class="challenge-options" role="group" aria-label="挑战提示词">
+          <label>提示词风格
+            <select id="challenge-style">
+              <option value="standard" selected>完整说明</option>
+              <option value="compact">简短提示</option>
+            </select>
+          </label>
+          <label>语言
+            <select id="challenge-language">
+              <option value="zh" selected>中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <p>简短提示更短，并要求写满指定个数后立即停止。</p>
+        </div>
         <div class="panel-toolbar">
           <strong>三次挑战</strong>
           <button id="regenerate" class="button secondary" type="button" disabled>重新生成</button>

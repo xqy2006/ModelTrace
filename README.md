@@ -17,9 +17,11 @@ python start.py
 
 ## 使用
 
-- **手动测试**：复制三条挑战，分别发送给同一个待测模型，再粘贴每次完整输出。
-- **API 自动测试**：填写 Base URL、API Key 和模型名。程序会自动尝试 OpenAI Chat Completions 与 Anthropic Messages 格式，以三份有效回答为目标完成归因。
+- **手动测试**：复制三条挑战，分别发送给同一个待测模型，再粘贴每次完整输出。可在测试页选择提示词风格（完整说明 / 简短提示）和语言（中文 / English）。简短提示只保留数量、范围和“写满后立即停止”，完整说明仍是默认。
+- **API 自动测试**：填写 Base URL、API Key 和模型名。程序会自动尝试 OpenAI Chat Completions 与 Anthropic Messages 格式，以三份有效回答为目标完成归因。自动测试使用与手动测试相同的提示词风格和语言。
 - **指纹库管理**：可以新建指纹库，或通过 API 为现有指纹库添加模型指纹。
+
+`GET /api/challenges?style=compact&language=en` 可直接生成对应提示词。`style` 为 `standard`（默认）或 `compact`，`language` 为 `zh`（默认）或 `en`。
 
 API Key 只用于当前页面发起请求，不写入磁盘。
 自动采集会在对应的 `*_reference.jsonl` 中保存实际 user prompt、base prompt、system prompt 和 user prefix；拟合后的 `*_bank.json` 与 `unified_bank.json` 只保存统计指纹和校准参数。
