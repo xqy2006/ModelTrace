@@ -159,9 +159,11 @@ th { color: var(--muted); background: var(--surface-soft); font-weight: 650; tex
 th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr.winner { background: var(--primary-soft); }
+tbody tr.unknown-row { background: #f8fafc; }
 .probability-cell { display: flex; align-items: center; gap: 10px; min-width: 230px; }
 .probability-cell > span { width: 160px; height: 7px; overflow: hidden; background: #e5eaf0; border-radius: 99px; }
 .probability-cell i { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+.probability-cell.unknown-bar i { background: var(--muted); }
 .status-tag { display: inline-block; padding: 4px 7px; border-radius: 5px; font-size: 10px; }
 .status-tag.ok { color: var(--success); background: var(--success-soft); }
 .status-tag.warning { color: var(--warning); background: var(--warning-soft); }

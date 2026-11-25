@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import os
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import json
 import math
 import re
@@ -17,7 +22,8 @@ app = Flask(__name__)
 PROJECT = Path(__file__).resolve().parent
 CUSTOM_BANKS_FILE = PROJECT / "data" / "custom_banks.json"
 UNIFIED_BANK_FILE = PROJECT / "data" / "unified_bank.json"
-DEFAULT_BANK_ID = "claude"
+STATIC_UNIFIED_BANK_FILE = PROJECT / "static" / "data" / "unified_bank.json"
+DEFAULT_BANK_ID = "gpt"
 
 
 def builtin_configs() -> dict[str, dict]:
@@ -81,15 +87,19 @@ def active_banks() -> dict[str, dict]:
 
 def global_reference_rows() -> list[dict]:
     rows = []
-    for bank_id in active_banks():
-        config = BANK_CONFIGS[bank_id]
+    for bank_id, config in BANK_CONFIGS.items():
+        if not config["data_file"].exists():
+            continue
+        file_rows = read_rows(config["data_file"])
+        if not file_rows:
+            continue
         rows.extend(
             {
                 **row,
                 "family_id": bank_id,
                 "family_name": config["label"],
             }
-            for row in read_rows(config["data_file"])
+            for row in file_rows
         )
     return rows
 
@@ -97,15 +107,16 @@ def global_reference_rows() -> list[dict]:
 def rebuild_global_bank() -> dict:
     global unified_bank
     unified_bank = build_bank(global_reference_rows())
-    UNIFIED_BANK_FILE.write_text(
-        json.dumps(unified_bank, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    serialized = json.dumps(unified_bank, ensure_ascii=False, separators=(",", ":")) + "\n"
+    UNIFIED_BANK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATIC_UNIFIED_BANK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    UNIFIED_BANK_FILE.write_text(serialized, encoding="utf-8")
+    STATIC_UNIFIED_BANK_FILE.write_text(serialized, encoding="utf-8")
     return unified_bank
 
 
 unified_bank = load_bank(UNIFIED_BANK_FILE) if UNIFIED_BANK_FILE.exists() else None
-if unified_bank is None:
+if unified_bank is None or "v6_portable" not in unified_bank:
     rebuild_global_bank()
 
 
@@ -119,6 +130,19 @@ def requested_bank_id(payload: dict | None = None) -> str:
 def requested_temperature(payload: dict) -> float | None:
     value = payload.get("temperature")
     return None if value in (None, "") else float(value)
+
+
+def requested_concurrency(payload: dict, default: int = 3) -> int:
+    value = payload.get("concurrency")
+    if value in (None, ""):
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("并发数必须为正整数") from error
+    if parsed < 1:
+        raise ValueError("并发数不能小于 1")
+    return parsed
 
 
 def summarized_bank(bank_id: str) -> dict:
@@ -136,6 +160,26 @@ def summarized_bank(bank_id: str) -> dict:
 
 
 def summarized_unified_bank() -> dict:
+    if unified_bank is not None and unified_bank.get("models"):
+        by_fam: dict[str, list[dict]] = {}
+        for m in unified_bank["models"]:
+            fid = m.get("family") or "models"
+            by_fam.setdefault(fid, []).append(m)
+        return {
+            "id": "unified",
+            "label": "全部指纹",
+            "model_count": len(unified_bank["models"]),
+            "response_count": sum(m["response_count"] for m in unified_bank["models"]),
+            "family_count": len(by_fam),
+            "families": [
+                {
+                    "id": fid,
+                    "label": BANK_CONFIGS.get(fid, {}).get("label", fid),
+                    "model_count": len(ms),
+                }
+                for fid, ms in by_fam.items()
+            ],
+        }
     summaries = {bank_id: summarized_bank(bank_id) for bank_id in active_banks()}
     return {
         "id": "unified",
@@ -175,8 +219,16 @@ def challenges():
 @app.post("/api/analyze")
 def analyze():
     try:
-        payload = request.get_json()
-        result = analyze_global_outputs(payload["outputs"], unified_bank)
+        payload = request.get_json() or {}
+        operating_point = str(payload.get("operating_point") or "default")
+        result = analyze_global_outputs(
+            payload.get("outputs") or [],
+            unified_bank,
+            operating_point=operating_point,
+            tau_abs=payload.get("tau_abs"),
+            dom_rival=payload.get("dom_rival"),
+            dom_u=payload.get("dom_u"),
+        )
         result["bank"] = summarized_unified_bank()
         return jsonify(result)
     except ValueError as error:
@@ -185,7 +237,7 @@ def analyze():
 
 @app.post("/api/test/auto")
 def automatic_test():
-    payload = request.get_json()
+    payload = request.get_json() or {}
     try:
         result = test_automatic(
             base_url=payload["base_url"].strip(),
@@ -194,6 +246,7 @@ def automatic_test():
             temperature=requested_temperature(payload),
             bank=unified_bank,
             api_format="auto",
+            concurrency=requested_concurrency(payload),
         )
         result["bank"] = summarized_unified_bank()
         return jsonify(result)
@@ -203,7 +256,7 @@ def automatic_test():
 
 @app.post("/api/test/probe")
 def automatic_test_probe():
-    payload = request.get_json()
+    payload = request.get_json() or {}
     try:
         text = request_completion(
             base_url=payload["base_url"].strip(),
@@ -243,8 +296,8 @@ def get_banks():
 
 @app.post("/api/banks")
 def create_bank():
-    payload = request.get_json()
-    label = payload["label"].strip()
+    payload = request.get_json() or {}
+    label = str(payload.get("label") or "").strip()
     if not label:
         return jsonify({"error": "请输入指纹库名称"}), 400
     bank_id = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-") or f"bank-{secrets.token_hex(3)}"
@@ -272,7 +325,7 @@ def create_bank():
 
 @app.post("/api/enroll/auto")
 def automatic_enrollment():
-    payload = request.get_json()
+    payload = request.get_json() or {}
     try:
         bank_id = requested_bank_id(payload)
         config = BANK_CONFIGS[bank_id]
@@ -298,4 +351,4 @@ def automatic_enrollment():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=7860, debug=False)
+    app.run(host="127.0.0.1", port=7860, debug=False, threaded=True)

@@ -11,7 +11,7 @@ function escapeHtml(value) {
 }
 
 function percent(value) {
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(Number(value || 0) * 100).toFixed(1)}%`;
 }
 
 function setMessage(text, type = "error") {
@@ -63,30 +63,59 @@ function regenerate() {
 }
 
 function renderResult(payload) {
+  const isAccept = payload.decision === "accept";
+  const headlineModel = isAccept ? payload.prediction_name : "未匹配（拒绝归因）";
   const diagnostics = payload.diagnostics.map((item, index) => `
     <span class="diagnostic ${item.accepted ? "accepted" : "rejected"}">挑战 ${index + 1}: ${item.parsed_numbers} 个数字 · ${item.accepted ? "计入" : "忽略"}</span>
   `).join("");
-  const rows = payload.results.map((item, index) => `
-    <tr class="${index === 0 ? "winner" : ""}">
-      <td>${index + 1}</td>
-      <td><strong>${escapeHtml(item.display_name)}</strong></td>
-      <td>${escapeHtml(item.family_name)}</td>
-      <td><div class="probability-cell"><span><i style="width:${item.probability * 100}%"></i></span><strong>${percent(item.probability)}</strong></div></td>
-      <td>${percent(item.profile_similarity)}</td>
-    </tr>
-  `).join("");
+
+  const entries = [
+    ...payload.results.map((item, index) => ({ kind: "known", item, isTopKnown: index === 0 })),
+    { kind: "unknown", probability: Number(payload.unknown_probability || 0) },
+  ].sort((a, b) => {
+    const pa = a.kind === "known" ? a.item.probability : a.probability;
+    const pb = b.kind === "known" ? b.item.probability : b.probability;
+    return pb - pa;
+  });
+
+  const rows = entries.map((entry, index) => {
+    if (entry.kind === "unknown") {
+      const pU = entry.probability;
+      return `
+        <tr class="unknown-row">
+          <td>${index + 1}</td>
+          <td><strong>未知 / 库外模型</strong></td>
+          <td>—</td>
+          <td><div class="probability-cell unknown-bar"><span><i style="width:${Math.min(pU * 100, 100)}%"></i></span><strong>${percent(pU)}</strong></div></td>
+          <td>—</td>
+        </tr>
+      `;
+    }
+    const { item, isTopKnown } = entry;
+    return `
+      <tr class="${isTopKnown && isAccept ? "winner" : ""}">
+        <td>${index + 1}</td>
+        <td><strong>${escapeHtml(item.display_name)}</strong></td>
+        <td>${escapeHtml(item.family_name)}</td>
+        <td><div class="probability-cell"><span><i style="width:${Math.min(item.probability * 100, 100)}%"></i></span><strong>${percent(item.probability)}</strong></div></td>
+        <td>${percent(item.profile_similarity)}</td>
+      </tr>
+    `;
+  }).join("");
+
   const result = byId("result");
   result.innerHTML = `
     <div class="result-summary">
-      <div><span>最可能模型</span><strong>${escapeHtml(payload.prediction_name)}</strong></div>
+      <div><span>最可能模型</span><strong>${escapeHtml(headlineModel)}</strong></div>
       <div><span>统一库概率</span><strong>${percent(payload.probability)}</strong></div>
-      <div><span>模型家族</span><strong>${escapeHtml(payload.family_prediction_name)} · ${percent(payload.family_probability)}</strong></div>
+      <div><span>模型家族</span><strong>${escapeHtml(isAccept ? `${payload.family_prediction_name} · ${percent(payload.family_probability)}` : "—")}</strong></div>
       <div><span>有效查询</span><strong>${payload.used_outputs}/3</strong></div>
     </div>
     <div class="diagnostics">${diagnostics}</div>
     <div class="table-wrap"><table><thead><tr><th>排序</th><th>候选模型</th><th>家族</th><th>归因概率</th><th>分布相似度</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="result-guidance" role="note" aria-label="结果说明">
-      <p>本工具仅对指纹库内的模型进行归因；若待测模型不在指纹库中，得到任何结果都有可能。</p>
+      <p>本工具仅对指纹库内的模型进行归因；若待测模型不在指纹库中或置信度不足，将直接拒绝归因。</p>
+      <p>gpt-6.1-sol 与 gpt-6-astra 输出分布非常接近，两者之间的分辨结果可能不准确。</p>
       <p>Claude Code 的系统提示词会影响模型偏好，测试结果存在较大偏差，建议不要在 Claude Code 中测试。</p>
     </div>
   `;
