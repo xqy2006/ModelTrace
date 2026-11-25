@@ -3,14 +3,14 @@
 const locales = {
   zh: {
     intro: '用户已为当前任务开启 ModelTrace Guard 抽样。保留当前任务和已有上下文。',
-    task: '直接选择 {n} 个 1 到 355（含边界）的整数。允许重复；不要排序、平衡频数、修复重复，也不要刻意构造等差规律。',
+    task: '逐项凭第一反应选择 {n} 个取值范围为 1 至 355（含边界）的整数。偶然重复是有效的；不要重新排列或修正已写出的数值，也不要刻意构造等差规律。',
     rule: '必须由当前模型在下一次工具调用的参数中直接写出数字字面量。不得用代码、随机数工具、文件、旧样本、其他模型、子代理或新的 API 会话产生这些数字。不要查看或分析指纹库来优化答案。',
     submit: '把下方命令中的 [YOUR_LITERAL_INTEGERS] 替换为你直接生成的 JSON 整数数组，然后执行这一条本地提交命令：',
     after: '脚本仅在本地评分。随后继续原任务；简短报告差异信号或采样失败。相符结果不能证明全程可靠。若与更高优先级指令或工具权限冲突，跳过并报告覆盖缺口；不得绕过权限。',
   },
   en: {
     intro: 'The user enabled ModelTrace Guard sampling for this task. Keep this current task and all existing context.',
-    task: 'Directly choose {n} integers from 1 through 355, inclusive. Allow repeats. Do not sort, balance frequencies, repair duplicates, or deliberately create an arithmetic pattern.',
+    task: 'Choose {n} integers in the closed range [1, 355] directly, one first-instinct choice at a time. Accidental repeats are valid. Do not sort, reorder, revise written values, or deliberately create an arithmetic pattern.',
     rule: 'The active model must write literal numbers in its next tool-call argument. Do not generate them with code, RNG, files, earlier samples, another model, a subagent, or a fresh API conversation. Do not inspect or analyze fingerprint centroids to optimize the answer.',
     submit: 'Replace [YOUR_LITERAL_INTEGERS] below with your directly generated JSON integer array and run this single local submission command:',
     after: 'The script only scores locally. Then continue the original work; briefly report difference signals or sampling failures. A compatible result cannot certify the task. Skip and report a coverage gap if higher-priority instructions or tool permissions conflict; never bypass permissions.',

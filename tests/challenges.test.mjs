@@ -30,6 +30,13 @@ test("compact English names the count twice and stops after it", () => {
   assert.match(item.prompt, new RegExp(`Stop immediately after ${item.expected_count} integers`));
 });
 
+test("standard packs use a distinct opening per challenge", () => {
+  for (const [language, separator] of [["zh", "。"], ["en", ". "]]) {
+    const openings = generateChallenges(3, { language }).map((item) => item.prompt.split(separator)[0]);
+    assert.equal(new Set(openings).size, 3);
+  }
+});
+
 test("unknown options throw", () => {
   assert.throws(() => generateChallenges(3, { style: "telegraph" }), /风格/);
   assert.throws(() => normalizeChallengeOptions("standard", "ja"), /语言/);

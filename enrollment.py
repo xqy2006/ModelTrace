@@ -9,13 +9,14 @@ import secrets
 import time
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fingerprint import analyze_global_outputs, generate_challenges, parse_numbers
 from bank_builder import build_bank, read_rows
 from challenge_suite import fingerprint_suite
+from v6_portable import CANONICAL_SUITE_PROMPT_KEYS
 
 
 PROJECT = Path(__file__).resolve().parent
@@ -47,6 +48,7 @@ def bank_summary(bank: dict) -> dict:
         "model_count": len(bank["models"]),
         "response_count": sum(model["response_count"] for model in bank["models"]),
         "number_count": sum(model["valid_number_count"] for model in bank["models"]),
+        "calibration": bank.get("calibration", {}),
         "models": [
             {
                 "id": model["id"],
@@ -96,6 +98,8 @@ def make_row(
         "strict_threshold": threshold,
         "strict_valid": len(numbers) >= threshold,
         "temperature": temperature,
+        "reasoning_effort": "unknown",
+        "prompt_key": CANONICAL_SUITE_PROMPT_KEYS.get(challenge_id, f"{condition}::{challenge_id}"),
         "config_id": "enrollment",
         "prompt": prompt,
         "base_prompt": base_prompt,
@@ -116,7 +120,7 @@ def append_rows(rows: list[dict], data_file: Path = DATA_FILE) -> None:
 def rebuild_bank(data_file: Path = DATA_FILE, bank_file: Path = BANK_FILE) -> dict:
     previous = json.loads(bank_file.read_text(encoding="utf-8")) if bank_file.exists() else None
     bank = build_bank(read_rows(data_file), previous["calibration"] if previous else None)
-    bank_file.write_text(json.dumps(bank, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    bank_file.write_text(json.dumps(bank, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     return bank
 
 
@@ -321,13 +325,17 @@ def test_automatic(
     temperature: float | None,
     bank: dict,
     api_format: str = "openai",
+    concurrency: int = 3,
 ) -> dict:
     target_count = 3
     max_attempts = 6
+    worker_limit = max(1, min(int(concurrency), max_attempts))
     challenges = generate_challenges(max_attempts)
-    outputs = []
-    errors = []
-    for challenge in challenges:
+    outputs: list[dict] = []
+    errors: list[str] = []
+    attempted = 0
+
+    def run_probe(challenge: dict) -> tuple[dict | None, str | None]:
         try:
             text = request_completion(
                 base_url,
@@ -340,24 +348,52 @@ def test_automatic(
             minimum = max(80, math.ceil(challenge["expected_count"] * 0.55))
             parsed_count = len(parse_numbers(text))
             if parsed_count >= minimum:
-                outputs.append(
+                return (
                     {
                         "text": text,
                         "expected_count": challenge["expected_count"],
-                    }
+                    },
+                    None,
                 )
-            else:
-                errors.append(f"有效数字不足：{parsed_count}/{minimum}")
+            return None, f"有效数字不足：{parsed_count}/{minimum}"
         except Exception as error:
-            errors.append(str(error))
-        if len(outputs) == target_count:
-            break
+            return None, str(error)
+
+    with ThreadPoolExecutor(max_workers=worker_limit) as pool:
+        in_flight: dict = {}
+        next_index = 0
+
+        def schedule_probes() -> None:
+            nonlocal next_index
+            while (
+                next_index < max_attempts
+                and len(in_flight) < worker_limit
+                and len(outputs) + len(in_flight) < target_count
+            ):
+                challenge = challenges[next_index]
+                in_flight[pool.submit(run_probe, challenge)] = next_index
+                next_index += 1
+
+        schedule_probes()
+        while in_flight and len(outputs) < target_count:
+            done, _ = wait(in_flight.keys(), return_when=FIRST_COMPLETED)
+            for future in done:
+                in_flight.pop(future)
+                attempted += 1
+                item, err = future.result()
+                if item is not None:
+                    outputs.append(item)
+                elif err is not None:
+                    errors.append(err)
+            schedule_probes()
+
     result = analyze_global_outputs(outputs, bank)
     result["api_test"] = {
         "requested": target_count,
-        "attempted": len(outputs) + len(errors),
+        "attempted": attempted,
         "max_attempts": max_attempts,
         "received": len(outputs),
+        "concurrency": worker_limit,
         "errors": errors,
     }
     return result

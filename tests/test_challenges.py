@@ -15,7 +15,9 @@ class ChallengePackTests(unittest.TestCase):
             self.assertEqual(item["style"], "standard")
             self.assertEqual(item["language"], "zh")
             self.assertIn(str(item["expected_count"]), item["prompt"])
-            self.assertIn("1 到 355", item["prompt"])
+            self.assertIn("355", item["prompt"])
+            self.assertGreaterEqual(item["expected_count"], 308)
+            self.assertLess(item["expected_count"], 343)
             self.assertIn("Python、代码执行器", item["prompt"])
             self.assertGreater(len(item["prompt"]), 120)
 
@@ -42,9 +44,15 @@ class ChallengePackTests(unittest.TestCase):
     def test_standard_english_keeps_the_full_instruction(self):
         challenges = generate_challenges(3, style="standard", language="en")
         for item in challenges:
-            self.assertIn("integers from 1 to 355 inclusive", item["prompt"])
+            self.assertIn("355", item["prompt"])
             self.assertIn("do not write or run code first", item["prompt"])
             self.assertGreater(len(item["prompt"]), 200)
+
+    def test_standard_prompts_use_distinct_openings(self):
+        for language, separator in (("zh", "。"), ("en", ". ")):
+            challenges = generate_challenges(3, language=language)
+            openings = [item["prompt"].split(separator, 1)[0] for item in challenges]
+            self.assertEqual(len(set(openings)), 3)
 
     def test_unknown_options_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "风格"):
