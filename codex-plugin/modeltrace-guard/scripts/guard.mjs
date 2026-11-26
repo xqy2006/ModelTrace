@@ -1,4 +1,5 @@
 import { randomInt } from 'node:crypto';
+import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -437,4 +438,17 @@ export async function main(args = process.argv.slice(2)) {
   finally { dispatchQueuedCleanups(); }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+export const isDirectCall = (entryUrl, argv1 = process.argv[1]) => {
+  if (!entryUrl || !argv1) return false;
+  try {
+    const target = entryUrl instanceof URL || (typeof entryUrl === 'string' && entryUrl.startsWith('file:'))
+      ? fileURLToPath(entryUrl)
+      : path.resolve(entryUrl);
+    if (path.resolve(argv1) === target) return true;
+    return realpathSync(argv1) === realpathSync(target);
+  } catch {
+    return false;
+  }
+};
+
+if (isDirectCall(import.meta.url)) await main();
